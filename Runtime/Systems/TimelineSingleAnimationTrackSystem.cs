@@ -31,6 +31,7 @@ namespace BovineLabs.Timeline.Animation
                 AnimDB = blobDB.animations,
                 TrackDataLookup = SystemAPI.GetComponentLookup<RukhankaSingleTrackData>(true),
                 ClipWeightLookup = SystemAPI.GetComponentLookup<ClipWeight>(true),
+                BlendGroupEntryLookup = SystemAPI.GetBufferLookup<BlendGroupEntry>(true),
                 ECB = ecb
             };
 
@@ -44,6 +45,7 @@ namespace BovineLabs.Timeline.Animation
             [ReadOnly] public NativeHashMap<Hash128, BlobAssetReference<AnimationClipBlob>> AnimDB;
             [ReadOnly] public ComponentLookup<RukhankaSingleTrackData> TrackDataLookup;
             [ReadOnly] public ComponentLookup<ClipWeight> ClipWeightLookup;
+            [ReadOnly] public BufferLookup<BlendGroupEntry> BlendGroupEntryLookup;
 
             public EntityCommandBuffer.ParallelWriter ECB;
 
@@ -53,6 +55,8 @@ namespace BovineLabs.Timeline.Animation
                 var target = binding.Value;
                 var track = clip.Track;
 
+                if (!BlendGroupEntryLookup.HasBuffer(target)) return;
+                
                 if (!TrackDataLookup.TryGetComponent(track, out var trackData)) return;
 
                 var timelineWeight =
