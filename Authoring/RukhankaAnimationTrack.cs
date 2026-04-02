@@ -1,0 +1,61 @@
+using System;
+using System.ComponentModel;
+using System.Linq;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.Animation;
+using BovineLabs.Timeline.Data;
+using Rukhanka;
+using Rukhanka.Hybrid;
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Timeline;
+
+namespace BovineLabs.Timeline.Animation.Authoring
+{
+    [Serializable]
+    [TrackClipType(typeof(RukhankaAnimationClip))]
+    [TrackColor(0.16f, 0.54f, 0.88f)]
+    [TrackBindingType(typeof(RigDefinitionAuthoring))]
+    [DisplayName("BovineLabs/Timeline/Animation/Rukhanka Clip")]
+    public class RukhankaAnimationTrack : DOTSTrack
+    {
+        [Tooltip("Layer Index allows you to blend multiple tracks. 0 = Base, 1+ = Overrides.")]
+        public int LayerIndex;
+
+        protected override void Bake(BakingContext context)
+        {
+            var rigDef = context.Director.ResolveRigDefinition(this);
+            if (rigDef == null)
+            {
+                base.Bake(context);
+                return;
+            }
+
+            context.Baker.AddComponent(context.TrackEntity, new RukhankaSingleTrackData
+            {
+                LayerIndex = LayerIndex
+            });
+
+            var clipsToBake = GetClips()
+                .Select(c => c.asset as RukhankaAnimationClip)
+                .Where(h => h?.animationClipHolder != null)
+                .Select(h => h.animationClipHolder)
+                .ToHashSet();
+
+            if (clipsToBake.Count > 0)
+            {
+                var bakedAnimations = new AnimationClipBaker().BakeAnimations(
+                    context.Baker, clipsToBake.ToArray(), rigDef.GetAvatar(), rigDef.gameObject);
+
+                var e = context.Baker.CreateAdditionalEntity(TransformUsageFlags.None, false,
+                    name + "_AnimationAssets");
+                var buffer = context.Baker.AddBuffer<NewBlobAssetDatabaseRecord<AnimationClipBlob>>(e);
+                buffer.AddValidAnimations(bakedAnimations);
+
+                if (bakedAnimations.IsCreated) bakedAnimations.Dispose();
+            }
+
+            base.Bake(context);
+        }
+    }
+}

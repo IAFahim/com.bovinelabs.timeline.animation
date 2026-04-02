@@ -1,0 +1,32 @@
+{
+  "name": "BovineLabs.Timeline.Animation",
+  "rootNamespace": "BovineLabs.Timeline.Animation",
+  "references": [
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Entities",
+    "Unity.Entities.Graphics",
+    "Unity.Entities.Hybrid",
+    "Unity.Mathematics",
+    "Unity.Physics",
+    "Unity.Transforms",
+    "BovineLabs.Core",
+    "BovineLabs.Core.Extensions",
+    "BovineLabs.Reaction.Data",
+    "BovineLabs.Timeline",
+    "BovineLabs.Timeline.Core",
+    "BovineLabs.Timeline.Data",
+    "PlayerInputs.Data",
+    "Rukhanka.Runtime",
+    "Rukhanka.Hybrid"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
