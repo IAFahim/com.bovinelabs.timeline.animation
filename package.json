@@ -1,25 +1,28 @@
 {
-    "name": "com.bovinelabs.timeline.animation",
-    "version": "1.0.0",
-    "displayName": "BovineLabs Timeline Animation",
-    "description": "Rukhanka and BlendTree2D animation timeline tracks for DOTS.",
-    "dependencies": {
-        "com.unity.entities": "6.5.0",
-        "com.unity.collections": "6.5.0",
-        "com.unity.burst": "1.8.11",
-        "com.unity.mathematics": "1.3.2",
-        "com.bovinelabs.timeline.core": "1.0.0",
-        "com.rukhanka.animation": "1.0.0"
-    },
-    "unity": "2022.3",
-    "author": {
-        "name": "BovineLabs",
-        "url": "https://bovinelabs.com"
-    },
-    "keywords": [
-        "dots",
-        "timeline",
-        "ecs",
-        "physics"
-    ]
+  "name": "com.bovinelabs.timeline.animation",
+  "version": "1.0.0",
+  "displayName": "BovineLabs Timeline Animation",
+  "description": "Rukhanka and BlendTree2D animation timeline tracks for DOTS.",
+  "dependencies": {
+    "com.unity.entities": "6.5.0",
+    "com.unity.collections": "6.5.0",
+    "com.unity.burst": "1.8.11",
+    "com.unity.mathematics": "1.3.2",
+    "com.bovinelabs.timeline.core": "1.0.0",
+    "com.rukhanka.animation": "1.0.0"
+  },
+  "unity": "2022.3",
+  "author": {
+    "name": "BovineLabs",
+    "url": "https://bovinelabs.com"
+  },
+  "keywords": [
+    "dots",
+    "timeline",
+    "ecs",
+    "physics"
+  ],
+  "documentationUrl": "Documentation~/com.bovinelabs.timeline.animation.md",
+  "changelogUrl": "CHANGELOG.md",
+  "licensesUrl": "LICENSE.md"
 }
