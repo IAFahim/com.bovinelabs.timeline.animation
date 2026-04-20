@@ -1,8 +1,4 @@
-﻿// <copyright file="TimelineAnimationStateBuilder.cs" company="BovineLabs">
-//     Copyright (c) BovineLabs. All rights reserved.
-// </copyright>
-
-using BovineLabs.Core.EntityCommands;
+﻿using BovineLabs.Core.EntityCommands;
 using Rukhanka;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -61,6 +57,7 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
 
             builder.AddBuffer<BlendGroupEntry>();
             builder.AddBuffer<SmoothBlendGroupEntry>();
+            builder.AddBuffer<BlendTreePlaybackStateElement>();
         }
     }
 }

@@ -1,5 +1,3 @@
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.PlayerInputs.Data;
@@ -9,6 +7,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
 {
@@ -21,7 +20,6 @@ namespace BovineLabs.Timeline.Animation
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
             state.RequireForUpdate<BlobDatabaseSingleton>();
             _blendImpl.OnCreate(ref state);
         }
@@ -54,9 +52,6 @@ namespace BovineLabs.Timeline.Animation
                 TargetToTime = targetToTimeMap.AsParallelWriter()
             }.ScheduleParallel(state.Dependency);
 
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-
             state.Dependency = new DecomposeAndAppendBlendTreeJob
             {
                 BlendData = blendData,
@@ -65,10 +60,11 @@ namespace BovineLabs.Timeline.Animation
                 AnimDB = blobDB.animations,
                 TrackDataLookup = SystemAPI.GetComponentLookup<BlendAnimationTree2DTrackData>(true),
                 MotionBufferLookup = SystemAPI.GetBufferLookup<BlendTree2DMotionData>(true),
-                PlaybackStateLookup = state.GetUnsafeComponentLookup<BlendTreePlaybackState>(),
+                PlaybackStateLookup = SystemAPI.GetBufferLookup<BlendTreePlaybackStateElement>(),
                 FallbackOverrideLookup = SystemAPI.GetComponentLookup<TrackFallbackOverride>(true),
-                GlobalDeltaTime = SystemAPI.Time.DeltaTime,
-                ECB = ecb
+                BlendGroupLookup = SystemAPI.GetBufferLookup<BlendGroupEntry>(),
+                FallbackBufferLookup = SystemAPI.GetComponentLookup<BlendGroupFallBackForNoAnimationToProcessComponent>(),
+                GlobalDeltaTime = SystemAPI.Time.DeltaTime
             }.ScheduleParallel(blendData, 64, state.Dependency);
 
             targetToTrackMap.Dispose(state.Dependency);
@@ -84,8 +80,7 @@ namespace BovineLabs.Timeline.Animation
 
             private void Execute(ref BlendTree2DDirectionClipData clipData)
             {
-                if (clipData.BlendDirectionComponentTarget ==
-                    BlendDirectionComponentTarget.PhysicsLinearVelocityNormalized)
+                if (clipData.BlendDirectionComponentTarget == BlendDirectionComponentTarget.PhysicsLinearVelocityNormalized)
                 {
                     if (PhysicsVelocityLookup.TryGetComponent(clipData.BlendDirectionEntityTarget, out var pv))
                     {
@@ -138,10 +133,10 @@ namespace BovineLabs.Timeline.Animation
             [ReadOnly] public BufferLookup<BlendTree2DMotionData> MotionBufferLookup;
             [ReadOnly] public ComponentLookup<TrackFallbackOverride> FallbackOverrideLookup;
 
-            [NativeDisableParallelForRestriction]
-            public UnsafeComponentLookup<BlendTreePlaybackState> PlaybackStateLookup;
+            [NativeDisableParallelForRestriction] public BufferLookup<BlendTreePlaybackStateElement> PlaybackStateLookup;
+            [NativeDisableParallelForRestriction] public BufferLookup<BlendGroupEntry> BlendGroupLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<BlendGroupFallBackForNoAnimationToProcessComponent> FallbackBufferLookup;
 
-            public EntityCommandBuffer.ParallelWriter ECB;
             public float GlobalDeltaTime;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
@@ -149,26 +144,26 @@ namespace BovineLabs.Timeline.Animation
                 this.Read(BlendData, entryIndex, out var targetEntity, out var mixData);
 
                 var blendedDirection = JobHelpers.Blend<float2, Float2Mixer>(ref mixData, float2.zero);
-                var totalTimelineWeight = math.min(1f,
-                    mixData.Weights.x + mixData.Weights.y + mixData.Weights.z + mixData.Weights.w);
+                var totalTimelineWeight = math.min(1f, mixData.Weights.x + mixData.Weights.y + mixData.Weights.z + mixData.Weights.w);
 
                 if (totalTimelineWeight <= 0f || !TargetToTrack.TryGetValue(targetEntity, out var trackEntity) ||
                     !TargetToTime.TryGetValue(targetEntity, out var absoluteTime) ||
                     !MotionBufferLookup.TryGetBuffer(trackEntity, out var motions) ||
-                    !TrackDataLookup.TryGetComponent(trackEntity, out var trackData)) return;
+                    !TrackDataLookup.TryGetComponent(trackEntity, out var trackData) || 
+                    !BlendGroupLookup.TryGetBuffer(targetEntity, out var blendGroupBuffer)) return;
 
-                if (FallbackOverrideLookup.TryGetComponent(trackEntity, out var fallbackOverride))
-                    ECB.SetComponent(entryIndex, targetEntity, new BlendGroupFallBackForNoAnimationToProcessComponent
+                if (FallbackOverrideLookup.TryGetComponent(trackEntity, out var fallbackOverride) && FallbackBufferLookup.HasComponent(targetEntity))
+                {
+                    FallbackBufferLookup[targetEntity] = new BlendGroupFallBackForNoAnimationToProcessComponent
                     {
                         ClipHash = fallbackOverride.FallbackClipHash,
                         BlendInSpeed = fallbackOverride.BlendInSpeed,
                         BlendOutSpeed = fallbackOverride.BlendOutSpeed
-                    });
+                    };
+                }
 
-                var blendTreeClips =
-                    new NativeArray<BlobAssetReference<AnimationClipBlob>>(motions.Length, Allocator.Temp);
-                var blendTreePositions =
-                    new NativeArray<ScriptedAnimator.BlendTree2DMotionElement>(motions.Length, Allocator.Temp);
+                var blendTreeClips = new NativeArray<BlobAssetReference<AnimationClipBlob>>(motions.Length, Allocator.Temp);
+                var blendTreePositions = new NativeArray<ScriptedAnimator.BlendTree2DMotionElement>(motions.Length, Allocator.Temp);
 
                 for (var i = 0; i < motions.Length; i++)
                 {
@@ -184,11 +179,9 @@ namespace BovineLabs.Timeline.Animation
                 var internalWeights = trackData.BlendTreeType switch
                 {
                     MotionBlob.Type.BlendTree2DSimpleDirectional =>
-                        ScriptedAnimator.ComputeBlendTree2DSimpleDirectional(blendTreePositions.AsReadOnly(),
-                            blendedDirection),
+                        ScriptedAnimator.ComputeBlendTree2DSimpleDirectional(blendTreePositions.AsReadOnly(), blendedDirection),
                     MotionBlob.Type.BlendTree2DFreeformCartesian =>
-                        ScriptedAnimator.ComputeBlendTree2DFreeformCartesian(blendTreePositions.AsReadOnly(),
-                            blendedDirection),
+                        ScriptedAnimator.ComputeBlendTree2DFreeformCartesian(blendTreePositions.AsReadOnly(), blendedDirection),
                     MotionBlob.Type.BlendTree2DFreeformDirectional => ScriptedAnimator
                         .ComputeBlendTree2DFreeformDirectional(blendTreePositions.AsReadOnly(), blendedDirection),
                     _ => default
@@ -213,8 +206,22 @@ namespace BovineLabs.Timeline.Animation
 
                 var normalizedTime = 0f;
 
-                if (PlaybackStateLookup.TryGetComponent(trackEntity, out var playbackState))
+                if (PlaybackStateLookup.TryGetBuffer(targetEntity, out var stateBuffer))
                 {
+                    int stateIdx = -1;
+                    for (int i = 0; i < stateBuffer.Length; i++)
+                    {
+                        if (stateBuffer[i].Track == trackEntity) { stateIdx = i; break; }
+                    }
+
+                    if (stateIdx == -1)
+                    {
+                        stateIdx = stateBuffer.Length;
+                        stateBuffer.Add(new BlendTreePlaybackStateElement { Track = trackEntity, IsInitialized = false });
+                    }
+
+                    var playbackState = stateBuffer[stateIdx];
+
                     if (!playbackState.IsInitialized)
                     {
                         var initialTime = absoluteTime / weightedDuration;
@@ -232,7 +239,7 @@ namespace BovineLabs.Timeline.Animation
                         normalizedTime = math.frac(playbackState.AccumulatedTime);
                     }
 
-                    PlaybackStateLookup[trackEntity] = playbackState;
+                    stateBuffer[stateIdx] = playbackState;
                 }
 
                 for (var i = 0; i < internalWeights.Length; i++)
@@ -241,7 +248,8 @@ namespace BovineLabs.Timeline.Animation
                     var clipBlob = blendTreeClips[mw.motionIndex];
 
                     if (clipBlob.IsCreated && mw.weight > 0f)
-                        ECB.AppendToBuffer(entryIndex, targetEntity, new BlendGroupEntry
+                    {
+                        blendGroupBuffer.Add(new BlendGroupEntry
                         {
                             LayerIndex = trackData.LayerIndex,
                             ClipHash = clipBlob.Value.hash,
@@ -250,6 +258,7 @@ namespace BovineLabs.Timeline.Animation
                             AvatarMaskHash = default,
                             BlendMode = AnimationBlendingMode.Override
                         });
+                    }
                 }
 
                 internalWeights.Dispose();

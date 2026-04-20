@@ -2,8 +2,10 @@ using Unity.Entities;
 
 namespace BovineLabs.Timeline.Animation
 {
-    public struct BlendTreePlaybackState : IComponentData
+    [InternalBufferCapacity(4)]
+    public struct BlendTreePlaybackStateElement : IBufferElementData
     {
+        public Entity Track;
         public float AccumulatedTime;
         public float PreviousAbsoluteTime;
         public bool IsInitialized;
