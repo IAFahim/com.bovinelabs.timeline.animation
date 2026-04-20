@@ -68,7 +68,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 {
                     AnimationHash = BakingUtils.ComputeAnimationHash(motion.clip, avatar),
                     BlendTree2DMotionElement = new ScriptedAnimator.BlendTree2DMotionElement
-                        { pos = motion.direction, motionIndex = index++ }
+                        { pos = motion.directionCalc, motionIndex = index++ }
                 });
                 clipsToBake.Add(motion.clip);
             }
@@ -107,8 +107,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
             public AnimationClip clip;
             [Range(-180, 180)] public float degreeCalc;
             public float rangeCalc = 1;
-            [SerializeField] private Vector2 directionCalc;
-            public Vector2 direction;
+            public Vector2 directionCalc;
 
             internal Vector2 CalcDirection()
             {
