@@ -35,7 +35,7 @@ namespace BovineLabs.Timeline.Animation
         public Hash128 PreviousFallbackClipHash;
     }
 
-    public struct BlendGroupFallbackForNoAnimationToProcessComponent : IComponentData
+    public struct FallbackBlend : IComponentData
     {
         public Hash128 ClipHash;
         public float BlendInSpeed;

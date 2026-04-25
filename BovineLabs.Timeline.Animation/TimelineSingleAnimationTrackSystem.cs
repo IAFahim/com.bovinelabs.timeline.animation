@@ -1,9 +1,11 @@
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
 using Rukhanka;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Mathematics;
 using Hash128 = Unity.Entities.Hash128;
 
@@ -39,8 +41,8 @@ namespace BovineLabs.Timeline.Animation
             var gatherJob = new GatherActiveClipsJob
             {
                 AnimDB = blobDB.animations,
-                ClipWeights = SystemAPI.GetComponentLookup<ClipWeight>(true),
-                TrackDataLookup = SystemAPI.GetComponentLookup<RukhankaSingleTrackData>(true),
+                ClipWeights = state.GetUnsafeComponentLookup<ClipWeight>(true),
+                TrackDataLookup = state.GetUnsafeComponentLookup<RukhankaSingleTrackData>(true),
                 ActiveAnimations = activeAnimationsMap.AsParallelWriter()
             };
 
@@ -49,10 +51,10 @@ namespace BovineLabs.Timeline.Animation
             var applyJob = new ApplyAnimationsJob
             {
                 ActiveAnimations = activeAnimationsMap,
-                AnimationBuffers = SystemAPI.GetBufferLookup<BlendGroupEntry>()
+                AnimationBuffers = state.GetUnsafeBufferLookup<BlendGroupEntry>()
             };
 
-            state.Dependency = applyJob.Schedule(state.Dependency);
+            state.Dependency = applyJob.ScheduleParallel(activeAnimationsMap, 64, state.Dependency);
         }
 
         [BurstCompile]
@@ -60,8 +62,8 @@ namespace BovineLabs.Timeline.Animation
         public partial struct GatherActiveClipsJob : IJobEntity
         {
             [ReadOnly] public NativeHashMap<Hash128, BlobAssetReference<AnimationClipBlob>> AnimDB;
-            [ReadOnly] public ComponentLookup<ClipWeight> ClipWeights;
-            [ReadOnly] public ComponentLookup<RukhankaSingleTrackData> TrackDataLookup;
+            [ReadOnly] public UnsafeComponentLookup<ClipWeight> ClipWeights;
+            [ReadOnly] public UnsafeComponentLookup<RukhankaSingleTrackData> TrackDataLookup;
 
             public NativeParallelMultiHashMap<Entity, BlendGroupEntry>.ParallelWriter ActiveAnimations;
 
@@ -105,26 +107,18 @@ namespace BovineLabs.Timeline.Animation
         }
 
         [BurstCompile]
-        public struct ApplyAnimationsJob : IJob
+        public struct ApplyAnimationsJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelMultiHashMap<Entity, BlendGroupEntry> ActiveAnimations;
-            public BufferLookup<BlendGroupEntry> AnimationBuffers;
+            [NativeDisableParallelForRestriction] public UnsafeBufferLookup<BlendGroupEntry> AnimationBuffers;
 
-            public void Execute()
+            public void ExecuteNext(int entryIndex, int jobIndex)
             {
-                var (uniqueKeys, uniqueCount) = ActiveAnimations.GetUniqueKeyArray(Allocator.Temp);
+                this.Read(ActiveAnimations, entryIndex, out var entity, out var entry);
 
-                for (var i = 0; i < uniqueCount; i++)
-                {
-                    var entity = uniqueKeys[i];
-                    if (AnimationBuffers.TryGetBuffer(entity, out var buffer))
-                    {
-                        foreach (var atp in ActiveAnimations.GetValuesForKey(entity)) 
-                            buffer.Add(atp);
-                    }
-                }
+                if (!AnimationBuffers.TryGetBuffer(entity, out var buffer)) return;
 
-                uniqueKeys.Dispose();
+                buffer.Add(entry);
             }
         }
     }

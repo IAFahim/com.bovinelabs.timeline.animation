@@ -19,9 +19,16 @@ namespace BovineLabs.Timeline.Animation.Authoring
                    ?? (binding as GameObject)?.GetComponent<RigDefinitionAuthoring>();
         }
 
-        public static Hash128 ComputeHashOrDefault(this AnimationClip clip, Avatar avatar)
+        public static bool TryComputeHash(this AnimationClip clip, Avatar avatar, out Hash128 hash)
         {
-            return clip != null ? BakingUtils.ComputeAnimationHash(clip, avatar) : default;
+            if (clip != null)
+            {
+                hash = BakingUtils.ComputeAnimationHash(clip, avatar);
+                return true;
+            }
+
+            hash = default;
+            return false;
         }
 
         public static void AddValidAnimations(

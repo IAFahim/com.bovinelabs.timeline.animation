@@ -18,11 +18,11 @@ namespace BovineLabs.Timeline.Animation
                          DynamicBuffer<SmoothBlendGroupEntry>,
                          DynamicBuffer<BlendTreePlaybackStateElement>,
                          RefRO<BlendGroupTimer>,
-                         RefRO<BlendGroupFallbackForNoAnimationToProcessComponent>,
+                         RefRO<FallbackBlend>,
                          RefRW<AnimationDebugState>>())
             {
                 var fb = fallback.ValueRO;
-                var d = debug.ValueRW;
+                ref var d = ref debug.ValueRW;
 
                 d.ActiveTrackCount = playbackBuf.Length;
                 d.ActiveClipCount = smoothBuf.Length;
@@ -43,8 +43,6 @@ namespace BovineLabs.Timeline.Animation
 
                 d.FallbackWeight = math.max(0f, 1f - overrideWeight);
                 d.FallbackTrackCount = fadingClips;
-
-                debug.ValueRW = d;
             }
         }
     }

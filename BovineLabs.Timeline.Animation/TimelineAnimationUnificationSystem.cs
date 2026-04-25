@@ -39,7 +39,7 @@ namespace BovineLabs.Timeline.Animation
             public void Execute(
                 Entity entity,
                 ref BlendGroupTimer timer,
-                ref BlendGroupFallbackForNoAnimationToProcessComponent fallbackData,
+                ref FallbackBlend fallbackData,
                 ref DynamicBuffer<BlendGroupEntry> blendEntries,
                 ref DynamicBuffer<SmoothBlendGroupEntry> smoothEntries,
                 ref DynamicBuffer<AnimationToProcessComponent> atps)
@@ -107,7 +107,7 @@ namespace BovineLabs.Timeline.Animation
 
                     if (s.CurrentWeight <= 0.0001f && s.TargetWeight <= 0.0001f)
                     {
-                        smoothEntries.RemoveAt(i);
+                        smoothEntries.RemoveAtSwapBack(i);
                         continue;
                     }
 
