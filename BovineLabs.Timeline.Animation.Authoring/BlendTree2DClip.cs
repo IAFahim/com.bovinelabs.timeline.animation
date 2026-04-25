@@ -50,13 +50,14 @@ namespace BovineLabs.Timeline.Animation.Authoring
                         $"[BlendTree2DClip] No track binding found for clip '{name}'. Skipping clip data.");
                     return;
                 }
+                var root = targetGo.transform.root;
 
-                var registry = targetGo.GetComponent<EntityLinkRegistryAuthoring>();
+                var registry = root.GetComponent<EntityLinkRegistryAuthoring>();
 
                 if (registry == null)
                 {
                     Debug.LogError(
-                        $"[BlendTree2DClip] Track binding '{targetGo.name}' is missing EntityLinkRegistryAuthoring component. Add it directly to the bound GameObject. Skipping clip data.");
+                        $"[BlendTree2DClip] Track binding '{root.name}' is missing EntityLinkRegistryAuthoring component. Add it directly to the bound GameObject. Skipping clip data.");
                     return;
                 }
 
@@ -73,7 +74,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 if (linkedTag == null)
                 {
                     Debug.LogError(
-                        $"[BlendTree2DClip] Required link '{ReadFrom.name}' missing in EntityLinkRegistryAuthoring on '{targetGo.name}'. Add the link to the registry. Skipping clip data.");
+                        $"[BlendTree2DClip] Required link '{ReadFrom.name}' missing in EntityLinkRegistryAuthoring on '{root.name}'. Add the link to the registry. Skipping clip data.");
                     return;
                 }
 
