@@ -3,6 +3,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 
+#if UNITY_EDITOR || BL_DEBUG
 namespace BovineLabs.Timeline.Animation
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
@@ -47,3 +48,4 @@ namespace BovineLabs.Timeline.Animation
         }
     }
 }
+#endif

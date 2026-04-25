@@ -6,6 +6,7 @@ using Rukhanka;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 using Hash128 = Unity.Entities.Hash128;
 
@@ -16,11 +17,13 @@ namespace BovineLabs.Timeline.Animation
     public partial struct TimelineSingleAnimationTrackSystem : ISystem
     {
         private NativeParallelMultiHashMap<Entity, BlendGroupEntry> activeAnimationsMap;
+        private NativeList<Entity> uniqueKeys;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             activeAnimationsMap = new NativeParallelMultiHashMap<Entity, BlendGroupEntry>(64, Allocator.Persistent);
+            uniqueKeys = new NativeList<Entity>(64, Allocator.Persistent);
             state.RequireForUpdate<BlobDatabaseSingleton>();
         }
 
@@ -29,6 +32,8 @@ namespace BovineLabs.Timeline.Animation
         {
             if (activeAnimationsMap.IsCreated)
                 activeAnimationsMap.Dispose();
+            if (uniqueKeys.IsCreated)
+                uniqueKeys.Dispose();
         }
 
         [BurstCompile]
@@ -48,13 +53,18 @@ namespace BovineLabs.Timeline.Animation
 
             state.Dependency = gatherJob.ScheduleParallel(state.Dependency);
 
-            var applyJob = new ApplyAnimationsJob
+            state.Dependency = new ExtractKeysJob
             {
                 ActiveAnimations = activeAnimationsMap,
-                AnimationBuffers = state.GetUnsafeBufferLookup<BlendGroupEntry>()
-            };
+                UniqueKeys = uniqueKeys,
+            }.Schedule(state.Dependency);
 
-            state.Dependency = applyJob.ScheduleParallel(activeAnimationsMap, 64, state.Dependency);
+            state.Dependency = new ApplyAnimationsJob
+            {
+                UniqueKeys = uniqueKeys,
+                ActiveAnimations = activeAnimationsMap,
+                AnimationBuffers = state.GetUnsafeBufferLookup<BlendGroupEntry>()
+            }.Schedule(uniqueKeys, 64, state.Dependency);
         }
 
         [BurstCompile]
@@ -107,18 +117,35 @@ namespace BovineLabs.Timeline.Animation
         }
 
         [BurstCompile]
-        public struct ApplyAnimationsJob : IJobParallelHashMapDefer
+        private struct ExtractKeysJob : IJob
         {
+            [ReadOnly] public NativeParallelMultiHashMap<Entity, BlendGroupEntry> ActiveAnimations;
+            public NativeList<Entity> UniqueKeys;
+
+            public void Execute()
+            {
+                var (keys, count) = ActiveAnimations.GetUniqueKeyArray(Allocator.Temp);
+                UniqueKeys.Clear();
+                for (int i = 0; i < count; i++)
+                    UniqueKeys.Add(keys[i]);
+                keys.Dispose();
+            }
+        }
+
+        [BurstCompile]
+        private struct ApplyAnimationsJob : IJobParallelForDefer
+        {
+            [ReadOnly] public NativeList<Entity> UniqueKeys;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, BlendGroupEntry> ActiveAnimations;
             [NativeDisableParallelForRestriction] public UnsafeBufferLookup<BlendGroupEntry> AnimationBuffers;
 
-            public void ExecuteNext(int entryIndex, int jobIndex)
+            public void Execute(int index)
             {
-                this.Read(ActiveAnimations, entryIndex, out var entity, out var entry);
-
+                var entity = UniqueKeys[index];
                 if (!AnimationBuffers.TryGetBuffer(entity, out var buffer)) return;
 
-                buffer.Add(entry);
+                foreach (var entry in ActiveAnimations.GetValuesForKey(entity))
+                    buffer.Add(entry);
             }
         }
     }

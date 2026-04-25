@@ -289,11 +289,6 @@ namespace BovineLabs.Timeline.Animation
                 }
             }
 
-            [NativeDisableContainerSafetyRestriction]
-            private NativeArray<BlobAssetReference<AnimationClipBlob>> blendTreeClipsCache;
-            [NativeDisableContainerSafetyRestriction]
-            private NativeArray<ScriptedAnimator.BlendTree2DMotionElement> blendTreePositionsCache;
-
             private void ProcessTrack(
                 Entity targetEntity,
                 Entity trackEntity,
@@ -306,24 +301,17 @@ namespace BovineLabs.Timeline.Animation
                     !BlendGroupLookup.TryGetBuffer(targetEntity, out var blendGroupBuffer)) return;
 
                 var motionCount = motions.Length;
-                if (blendTreeClipsCache.Length < motionCount)
-                {
-                    if (blendTreeClipsCache.IsCreated) blendTreeClipsCache.Dispose();
-                    blendTreeClipsCache = new NativeArray<BlobAssetReference<AnimationClipBlob>>(motionCount, Allocator.Temp);
-                    blendTreePositionsCache = new NativeArray<ScriptedAnimator.BlendTree2DMotionElement>(motionCount, Allocator.Temp);
-                }
+                var blendTreeClips = new NativeArray<BlobAssetReference<AnimationClipBlob>>(motionCount, Allocator.Temp);
+                var blendTreePositions = new NativeArray<ScriptedAnimator.BlendTree2DMotionElement>(motionCount, Allocator.Temp);
 
                 for (var i = 0; i < motionCount; i++)
                 {
                     var motionData = motions[i];
-                    blendTreeClipsCache[i] = AnimDB.TryGetValue(motionData.AnimationHash, out var cb)
+                    blendTreeClips[i] = AnimDB.TryGetValue(motionData.AnimationHash, out var cb)
                         ? cb
                         : BlobAssetReference<AnimationClipBlob>.Null;
-                    blendTreePositionsCache[i] = motionData.BlendTree2DMotionElement;
+                    blendTreePositions[i] = motionData.BlendTree2DMotionElement;
                 }
-
-                var blendTreeClips = blendTreeClipsCache.GetSubArray(0, motionCount);
-                var blendTreePositions = blendTreePositionsCache.GetSubArray(0, motionCount);
 
                 var internalWeights = trackData.BlendTreeType switch
                 {
@@ -410,6 +398,10 @@ namespace BovineLabs.Timeline.Animation
                         });
                     }
                 }
+
+                internalWeights.Dispose();
+                blendTreeClips.Dispose();
+                blendTreePositions.Dispose();
             }
 
             private uint ComputeMotionId(Entity track, int layerIndex, Hash128 clipHash)
