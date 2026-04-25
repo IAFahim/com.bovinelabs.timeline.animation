@@ -89,7 +89,10 @@ namespace BovineLabs.Timeline.Animation.Authoring
                     FallbackClipHash = BakingUtils.ComputeAnimationHash(ExitIdleClip, avatar),
                     BlendInSpeed = 1f / Mathf.Max(0.001f, BlendInDuration),
                     BlendOutSpeed = 1f / Mathf.Max(0.001f, BlendOutDuration),
-                    PlaybackMode = FallbackPlaybackMode
+                    PlaybackMode = FallbackPlaybackMode,
+                    LayerIndex = LayerIndex,
+                    BlendMode = AnimationBlendingMode.Override,
+                    AvatarMaskHash = default
                 });
                 clipsToBake.Add(ExitIdleClip);
             }

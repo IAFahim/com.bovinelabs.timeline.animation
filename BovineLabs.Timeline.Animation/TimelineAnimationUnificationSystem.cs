@@ -62,7 +62,8 @@ namespace BovineLabs.Timeline.Animation
                         if (smoothEntries[j].ClipHash == request.ClipHash &&
                             smoothEntries[j].LayerIndex == request.LayerIndex &&
                             smoothEntries[j].BlendMode == request.BlendMode &&
-                            smoothEntries[j].AvatarMaskHash == request.AvatarMaskHash)
+                            smoothEntries[j].AvatarMaskHash == request.AvatarMaskHash &&
+                            smoothEntries[j].MotionId == request.MotionId)
                         {
                             var s = smoothEntries[j];
                             s.TargetWeight = request.Weight;
@@ -134,6 +135,12 @@ namespace BovineLabs.Timeline.Animation
                 if (fallbackWeight > 0.0001f && fallbackData.ClipHash.IsValid)
                     if (AnimDB.TryGetValue(fallbackData.ClipHash, out var fallbackClip) && fallbackClip.IsCreated)
                     {
+                        if (timer.PreviousFallbackClipHash != fallbackData.ClipHash)
+                        {
+                            timer.FallbackAccumulatedTime = 0f;
+                            timer.PreviousFallbackClipHash = fallbackData.ClipHash;
+                        }
+
                         var duration = math.max(0.001f, fallbackClip.Value.length);
                         timer.FallbackAccumulatedTime += DeltaTime / duration;
 

@@ -42,7 +42,20 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
         {
             builder.AddComponent(new BlendGroupTimer { FallbackAccumulatedTime = 0f });
 
-            builder.AddComponent(new BlendGroupFallbackForNoAnimationToProcessComponent
+            var activeFallback = new BlendGroupFallbackForNoAnimationToProcessComponent
+            {
+                ClipHash = fallbackClipHash,
+                BlendInSpeed = blendInSpeed,
+                BlendOutSpeed = blendOutSpeed,
+                PlaybackMode = playbackMode,
+                LayerIndex = 0,
+                BlendMode = AnimationBlendingMode.Override,
+                AvatarMaskHash = default
+            };
+
+            builder.AddComponent(activeFallback);
+
+            builder.AddComponent(new DefaultBlendGroupFallback
             {
                 ClipHash = fallbackClipHash,
                 BlendInSpeed = blendInSpeed,

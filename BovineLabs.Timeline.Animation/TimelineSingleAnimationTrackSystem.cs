@@ -89,8 +89,18 @@ namespace BovineLabs.Timeline.Animation
                     NormalizedTime = normalizedTime,
                     Weight = weight,
                     AvatarMaskHash = default,
-                    BlendMode = AnimationBlendingMode.Override
+                    BlendMode = AnimationBlendingMode.Override,
+                    MotionId = ComputeMotionId(clip.Track, trackData.LayerIndex, clipData.ClipHash)
                 });
+            }
+
+            private uint ComputeMotionId(Entity track, int layerIndex, Hash128 clipHash)
+            {
+                var hash = (uint)track.Index;
+                hash = hash * 31 ^ (uint)track.Version;
+                hash = hash * 31 ^ (uint)layerIndex;
+                hash = hash * 31 ^ (uint)clipHash.GetHashCode();
+                return hash;
             }
         }
 

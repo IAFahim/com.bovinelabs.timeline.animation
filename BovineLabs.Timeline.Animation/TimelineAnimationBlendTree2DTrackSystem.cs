@@ -16,7 +16,6 @@ namespace BovineLabs.Timeline.Animation
     {
         internal struct TrackClipData
         {
-            public Entity Target;
             public Entity Track;
             public float AbsoluteTime;
             public float2 Direction;
@@ -40,11 +39,16 @@ namespace BovineLabs.Timeline.Animation
                 PlayerMoveInputLookup = SystemAPI.GetComponentLookup<PlayerMoveInput>(true)
             }.ScheduleParallel(state.Dependency);
 
-            var clipDataMap = new NativeParallelMultiHashMap<Entity, TrackClipData>(64, Allocator.TempJob);
+            var clipCount = SystemAPI.QueryBuilder()
+                .WithAll<BlendTree2DDirectionClipData, ClipActive, TrackBinding, Clip, LocalTime>()
+                .Build().CalculateEntityCount();
+            var clipDataMap = new NativeParallelMultiHashMap<Entity, TrackClipData>(
+                math.max(1, clipCount), Allocator.TempJob);
 
             state.Dependency = new GatherClipDataJob
             {
                 ClipDataMap = clipDataMap.AsParallelWriter(),
+                ClipLookup = SystemAPI.GetComponentLookup<Clip>(true),
                 ClipWeightLookup = SystemAPI.GetComponentLookup<ClipWeight>(true)
             }.ScheduleParallel(state.Dependency);
 
@@ -54,10 +58,8 @@ namespace BovineLabs.Timeline.Animation
                 AnimDB = blobDB.animations,
                 TrackDataLookup = SystemAPI.GetComponentLookup<BlendAnimationTree2DTrackData>(true),
                 MotionBufferLookup = SystemAPI.GetBufferLookup<BlendTree2DMotionData>(true),
-                PlaybackStateLookup = SystemAPI.GetBufferLookup<BlendTreePlaybackStateElement>(),
                 FallbackOverrideLookup = SystemAPI.GetComponentLookup<TrackFallbackOverride>(true),
-                BlendGroupLookup = SystemAPI.GetBufferLookup<BlendGroupEntry>(),
-                FallbackLookup = SystemAPI.GetComponentLookup<BlendGroupFallbackForNoAnimationToProcessComponent>(),
+                DefaultFallbackLookup = SystemAPI.GetComponentLookup<DefaultBlendGroupFallback>(true),
                 GlobalDeltaTime = SystemAPI.Time.DeltaTime
             }.ScheduleParallel(state.Dependency);
 
@@ -111,10 +113,11 @@ namespace BovineLabs.Timeline.Animation
         private partial struct GatherClipDataJob : IJobEntity
         {
             public NativeParallelMultiHashMap<Entity, TrackClipData>.ParallelWriter ClipDataMap;
+            [ReadOnly] public ComponentLookup<Clip> ClipLookup;
             [ReadOnly] public ComponentLookup<ClipWeight> ClipWeightLookup;
 
             private void Execute(Entity clipEntity, in BlendTree2DDirectionClipData directionData,
-                in TrackBinding binding, in Clip clip, in LocalTime localTime)
+                in TrackBinding binding, in LocalTime localTime)
             {
                 var weight = 1f;
                 if (ClipWeightLookup.TryGetComponent(clipEntity, out var cw))
@@ -122,10 +125,11 @@ namespace BovineLabs.Timeline.Animation
 
                 if (weight <= 0f) return;
 
+                var track = ClipLookup[clipEntity].Track;
+
                 ClipDataMap.Add(binding.Value, new TrackClipData
                 {
-                    Target = binding.Value,
-                    Track = clip.Track,
+                    Track = track,
                     AbsoluteTime = (float)localTime.Value,
                     Direction = directionData.Value,
                     Weight = weight
@@ -141,17 +145,16 @@ namespace BovineLabs.Timeline.Animation
             [ReadOnly] public ComponentLookup<BlendAnimationTree2DTrackData> TrackDataLookup;
             [ReadOnly] public BufferLookup<BlendTree2DMotionData> MotionBufferLookup;
             [ReadOnly] public ComponentLookup<TrackFallbackOverride> FallbackOverrideLookup;
-
-            [NativeDisableParallelForRestriction] public BufferLookup<BlendTreePlaybackStateElement> PlaybackStateLookup;
-            [NativeDisableParallelForRestriction] public BufferLookup<BlendGroupEntry> BlendGroupLookup;
-            [NativeDisableParallelForRestriction] public ComponentLookup<BlendGroupFallbackForNoAnimationToProcessComponent> FallbackLookup;
+            [ReadOnly] public ComponentLookup<DefaultBlendGroupFallback> DefaultFallbackLookup;
 
             public float GlobalDeltaTime;
 
-            private void Execute(Entity targetEntity)
+            private void Execute(
+                Entity targetEntity,
+                ref DynamicBuffer<BlendGroupEntry> blendGroupBuffer,
+                ref DynamicBuffer<BlendTreePlaybackStateElement> playbackState,
+                ref BlendGroupFallbackForNoAnimationToProcessComponent activeFallback)
             {
-                if (!BlendGroupLookup.TryGetBuffer(targetEntity, out var blendGroupBuffer)) return;
-
                 var bestFallbackLayer = -1;
                 TrackFallbackOverride bestFallback = default;
                 var hasFallbackCandidate = false;
@@ -164,14 +167,18 @@ namespace BovineLabs.Timeline.Animation
                     {
                         if (!processedTracks.TryGetValue(clipData.Track, out var blend))
                         {
-                            blend = default;
-                            blend.TrackEntity = clipData.Track;
+                            blend = new PerTrackBlend { TrackEntity = clipData.Track };
                         }
 
                         blend.DirectionX += clipData.Direction.x * clipData.Weight;
                         blend.DirectionY += clipData.Direction.y * clipData.Weight;
                         blend.TotalWeight += clipData.Weight;
-                        blend.AbsoluteTime = clipData.AbsoluteTime;
+
+                        if (clipData.Weight > blend.BestWeight)
+                        {
+                            blend.BestWeight = clipData.Weight;
+                            blend.AbsoluteTime = clipData.AbsoluteTime;
+                        }
 
                         processedTracks[clipData.Track] = blend;
                     } while (ClipDataMap.TryGetNextValue(out clipData, ref it));
@@ -194,16 +201,20 @@ namespace BovineLabs.Timeline.Animation
                         hasFallbackCandidate = true;
                     }
 
-                    var blendedDirection = new float2(blend.DirectionX, blend.DirectionY);
-                    ProcessTrack(targetEntity, trackEntity, blendedDirection, blend.TotalWeight,
-                        blend.AbsoluteTime, blendGroupBuffer);
+                    var totalWeight = math.saturate(blend.TotalWeight);
+                    var blendedDirection = new float2(blend.DirectionX, blend.DirectionY) /
+                                          math.max(0.0001f, blend.TotalWeight);
+
+                    ProcessTrack(targetEntity, trackEntity, blendedDirection, totalWeight,
+                        blend.AbsoluteTime, ref blendGroupBuffer, ref playbackState);
                 }
                 trackKeys.Dispose();
                 processedTracks.Dispose();
 
-                if (hasFallbackCandidate && FallbackLookup.HasComponent(targetEntity))
+                if (hasFallbackCandidate)
                 {
-                    FallbackLookup[targetEntity] = new BlendGroupFallbackForNoAnimationToProcessComponent
+                    var prev = activeFallback;
+                    activeFallback = new BlendGroupFallbackForNoAnimationToProcessComponent
                     {
                         ClipHash = bestFallback.FallbackClipHash,
                         BlendInSpeed = bestFallback.BlendInSpeed,
@@ -213,6 +224,26 @@ namespace BovineLabs.Timeline.Animation
                         BlendMode = bestFallback.BlendMode,
                         AvatarMaskHash = bestFallback.AvatarMaskHash
                     };
+
+                    if (prev.ClipHash != bestFallback.FallbackClipHash)
+                        activeFallback.BlendInSpeed = bestFallback.BlendInSpeed;
+                }
+                else if (DefaultFallbackLookup.TryGetComponent(targetEntity, out var defaults))
+                {
+                    var prev = activeFallback;
+                    activeFallback = new BlendGroupFallbackForNoAnimationToProcessComponent
+                    {
+                        ClipHash = defaults.ClipHash,
+                        BlendInSpeed = defaults.BlendInSpeed,
+                        BlendOutSpeed = defaults.BlendOutSpeed,
+                        PlaybackMode = defaults.PlaybackMode,
+                        LayerIndex = defaults.LayerIndex,
+                        BlendMode = defaults.BlendMode,
+                        AvatarMaskHash = defaults.AvatarMaskHash
+                    };
+
+                    if (prev.ClipHash != defaults.ClipHash)
+                        activeFallback.BlendInSpeed = defaults.BlendInSpeed;
                 }
             }
 
@@ -222,7 +253,8 @@ namespace BovineLabs.Timeline.Animation
                 float2 blendedDirection,
                 float totalTimelineWeight,
                 float absoluteTime,
-                DynamicBuffer<BlendGroupEntry> blendGroupBuffer)
+                ref DynamicBuffer<BlendGroupEntry> blendGroupBuffer,
+                ref DynamicBuffer<BlendTreePlaybackStateElement> playbackStateBuffer)
             {
                 if (!MotionBufferLookup.TryGetBuffer(trackEntity, out var motions) ||
                     !TrackDataLookup.TryGetComponent(trackEntity, out var trackData)) return;
@@ -267,42 +299,38 @@ namespace BovineLabs.Timeline.Animation
                 if (weightedDuration <= 0.001f) weightedDuration = 1f;
 
                 var normalizedTime = 0f;
-
-                if (PlaybackStateLookup.TryGetBuffer(targetEntity, out var stateBuffer))
+                int stateIdx = -1;
+                for (int i = 0; i < playbackStateBuffer.Length; i++)
                 {
-                    int stateIdx = -1;
-                    for (int i = 0; i < stateBuffer.Length; i++)
-                    {
-                        if (stateBuffer[i].Track == trackEntity) { stateIdx = i; break; }
-                    }
-
-                    if (stateIdx == -1)
-                    {
-                        stateIdx = stateBuffer.Length;
-                        stateBuffer.Add(new BlendTreePlaybackStateElement { Track = trackEntity, IsInitialized = false });
-                    }
-
-                    var ps = stateBuffer[stateIdx];
-
-                    if (!ps.IsInitialized)
-                    {
-                        var initialTime = absoluteTime / weightedDuration;
-                        ps.AccumulatedTime = initialTime;
-                        ps.PreviousAbsoluteTime = absoluteTime;
-                        ps.IsInitialized = true;
-                        normalizedTime = math.frac(initialTime);
-                    }
-                    else
-                    {
-                        var delta = absoluteTime - ps.PreviousAbsoluteTime;
-                        if (math.abs(delta) > 1.0f) delta = GlobalDeltaTime;
-                        ps.AccumulatedTime += delta / weightedDuration;
-                        ps.PreviousAbsoluteTime = absoluteTime;
-                        normalizedTime = math.frac(ps.AccumulatedTime);
-                    }
-
-                    stateBuffer[stateIdx] = ps;
+                    if (playbackStateBuffer[i].Track == trackEntity) { stateIdx = i; break; }
                 }
+
+                if (stateIdx == -1)
+                {
+                    stateIdx = playbackStateBuffer.Length;
+                    playbackStateBuffer.Add(new BlendTreePlaybackStateElement { Track = trackEntity, IsInitialized = false });
+                }
+
+                var ps = playbackStateBuffer[stateIdx];
+
+                if (!ps.IsInitialized)
+                {
+                    var initialTime = absoluteTime / weightedDuration;
+                    ps.AccumulatedTime = initialTime;
+                    ps.PreviousAbsoluteTime = absoluteTime;
+                    ps.IsInitialized = true;
+                    normalizedTime = math.frac(initialTime);
+                }
+                else
+                {
+                    var delta = absoluteTime - ps.PreviousAbsoluteTime;
+                    if (math.abs(delta) > 1.0f) delta = GlobalDeltaTime;
+                    ps.AccumulatedTime += delta / weightedDuration;
+                    ps.PreviousAbsoluteTime = absoluteTime;
+                    normalizedTime = math.frac(ps.AccumulatedTime);
+                }
+
+                playbackStateBuffer[stateIdx] = ps;
 
                 for (var i = 0; i < internalWeights.Length; i++)
                 {
@@ -346,6 +374,7 @@ namespace BovineLabs.Timeline.Animation
             public float DirectionX;
             public float DirectionY;
             public float TotalWeight;
+            public float BestWeight;
             public float AbsoluteTime;
         }
     }

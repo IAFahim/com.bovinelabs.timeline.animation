@@ -32,9 +32,21 @@ namespace BovineLabs.Timeline.Animation
     public struct BlendGroupTimer : IComponentData, IEnableableComponent
     {
         public float FallbackAccumulatedTime;
+        public Hash128 PreviousFallbackClipHash;
     }
 
     public struct BlendGroupFallbackForNoAnimationToProcessComponent : IComponentData
+    {
+        public Hash128 ClipHash;
+        public float BlendInSpeed;
+        public float BlendOutSpeed;
+        public FallbackPlaybackMode PlaybackMode;
+        public int LayerIndex;
+        public AnimationBlendingMode BlendMode;
+        public Hash128 AvatarMaskHash;
+    }
+
+    public struct DefaultBlendGroupFallback : IComponentData
     {
         public Hash128 ClipHash;
         public float BlendInSpeed;
