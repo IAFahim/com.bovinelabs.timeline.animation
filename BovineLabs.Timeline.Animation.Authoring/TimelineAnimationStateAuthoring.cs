@@ -13,6 +13,9 @@ namespace BovineLabs.Timeline.Animation.Authoring
         [Tooltip("The animation to play when no timeline clips are active.")]
         public AnimationClip fallbackAnimationClip;
 
+        [Tooltip("How the fallback animation wraps: Loop restarts, Clamp stops at end, Hold stays on last frame.")]
+        public FallbackPlaybackMode fallbackPlaybackMode = FallbackPlaybackMode.Loop;
+
         [Tooltip("Time in seconds to smoothly transition into a new timeline clip.")] [Min(0.001f)]
         public float blendInDuration = 0.25f;
 
@@ -29,12 +32,12 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
                 var commands = new BakerCommands(this, entity);
                 var builder = new TimelineAnimationStateBuilder()
-                    .WithFallback(default, authoring.blendInDuration, authoring.blendOutDuration);
+                    .WithFallback(default, authoring.blendInDuration, authoring.blendOutDuration, authoring.fallbackPlaybackMode);
 
                 if (authoring.fallbackAnimationClip != null)
                 {
                     var (fallbackHash, fallbackBlob) = BakeFallbackAnimation(authoring, avatar, entity);
-                    builder.WithFallback(fallbackHash, authoring.blendInDuration, authoring.blendOutDuration)
+                    builder.WithFallback(fallbackHash, authoring.blendInDuration, authoring.blendOutDuration, authoring.fallbackPlaybackMode)
                         .WithFallbackBlob(fallbackBlob, fallbackHash);
                 }
 

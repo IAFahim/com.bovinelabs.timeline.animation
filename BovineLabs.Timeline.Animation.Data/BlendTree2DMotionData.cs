@@ -16,14 +16,14 @@ namespace BovineLabs.Timeline.Animation
 
     public struct BlendTree2DDirectionClipData : IAnimatedComponent<float2>
     {
-        public BlendDirectionComponentTarget BlendDirectionComponentTarget;
-        public Entity BlendDirectionEntityTarget;
+        public BlendDirectionReadKind ReadKind;
+        public Entity ReadEntity;
         [CreateProperty] public float2 Value { get; set; }
     }
 
-    public enum BlendDirectionComponentTarget : byte
+    public enum BlendDirectionReadKind : byte
     {
-        BlendTree2DDirectionClipData = 0,
+        ClipValue = 0,
         PhysicsLinearVelocityNormalized = 1,
         PlayerMoveInput = 2
     }

@@ -8,6 +8,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
 {
     public class RukhankaAnimationClip : DOTSClip, ITimelineClipAsset
     {
+        [Tooltip("The animation clip to play when this timeline clip is active.")]
         public AnimationClip animationClipHolder;
 
         public override double duration => animationClipHolder != null ? animationClipHolder.length : base.duration;

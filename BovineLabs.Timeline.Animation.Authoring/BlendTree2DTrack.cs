@@ -18,17 +18,26 @@ namespace BovineLabs.Timeline.Animation.Authoring
     [DisplayName("BovineLabs/Timeline/Animation/Blend Tree 2D")]
     public class BlendTree2DTrack : DOTSTrack
     {
+        [Tooltip("Blend tree algorithm: SimpleDirectional for 1D-like with a center, FreeformCartesian for 2D positions, FreeformDirectional for 2D with polar handling.")]
         public MotionBlob.Type BlendTreeType = MotionBlob.Type.BlendTree2DSimpleDirectional;
 
-        [Tooltip("Layer Index allows you to blend multiple tracks. 0 = Base, 1+ = Overrides.")]
+        [Tooltip("Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers. Multiple tracks on the same rig can have different layer indices.")]
         public int LayerIndex;
 
         [Header("Exit / Fallback Override (Optional)")]
+        [Tooltip("Animation clip to play as fallback when no timeline clips are active on this track's target. Overrides the default fallback set on TimelineAnimationStateAuthoring. Highest layer index wins when multiple tracks specify overrides.")]
         public AnimationClip ExitIdleClip;
 
-        [Min(0.001f)] public float BlendInDuration = 0.25f;
-        [Min(0.001f)] public float BlendOutDuration = 0.25f;
+        [Tooltip("Time in seconds to blend into this fallback clip.")] [Min(0.001f)]
+        public float BlendInDuration = 0.25f;
 
+        [Tooltip("Time in seconds to blend out of this fallback clip.")] [Min(0.001f)]
+        public float BlendOutDuration = 0.25f;
+
+        [Tooltip("How the fallback animation wraps. Loop = restart from beginning, Clamp = freeze at last frame, Hold = always show last frame.")]
+        public FallbackPlaybackMode FallbackPlaybackMode = FallbackPlaybackMode.Loop;
+
+        [Tooltip("Motion entries that define the blend tree. Each entry maps an animation clip to a 2D direction/position.")]
         public List<BlendTree2DMotionEntry> Motions = new();
 
         private void OnValidate()
@@ -63,6 +72,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
             foreach (var motion in Motions)
             {
                 if (motion.clip == null) continue;
+                motion.CalcDirection();
                 motionBuffer.Add(new BlendTree2DMotionData
                 {
                     AnimationHash = BakingUtils.ComputeAnimationHash(motion.clip, avatar),
@@ -78,7 +88,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 {
                     FallbackClipHash = BakingUtils.ComputeAnimationHash(ExitIdleClip, avatar),
                     BlendInSpeed = 1f / Mathf.Max(0.001f, BlendInDuration),
-                    BlendOutSpeed = 1f / Mathf.Max(0.001f, BlendOutDuration)
+                    BlendOutSpeed = 1f / Mathf.Max(0.001f, BlendOutDuration),
+                    PlaybackMode = FallbackPlaybackMode
                 });
                 clipsToBake.Add(ExitIdleClip);
             }
@@ -89,10 +100,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
                     new AnimationClipBaker().BakeAnimations(baker, clipsToBake.ToArray(), avatar, rigDef.gameObject);
                 var e = baker.CreateAdditionalEntity(TransformUsageFlags.None, false, name + "_BlendTreeAssets");
                 var dbBuffer = baker.AddBuffer<NewBlobAssetDatabaseRecord<AnimationClipBlob>>(e);
-
-                foreach (var ba in bakedAnimations.Where(ba => ba != BlobAssetReference<AnimationClipBlob>.Null))
-                    dbBuffer.Add(new NewBlobAssetDatabaseRecord<AnimationClipBlob>
-                        { hash = ba.Value.hash, value = ba });
+                dbBuffer.AddValidAnimations(bakedAnimations);
 
                 if (bakedAnimations.IsCreated) bakedAnimations.Dispose();
             }
@@ -103,9 +111,13 @@ namespace BovineLabs.Timeline.Animation.Authoring
         [Serializable]
         public class BlendTree2DMotionEntry
         {
+            [Tooltip("Animation clip for this motion entry.")]
             public AnimationClip clip;
+            [Tooltip("Direction angle in degrees. 0 = forward, 90 = right, -90 = left, 180 = backward.")]
             [Range(-180, 180)] public float degreeCalc;
+            [Tooltip("Distance from origin in the blend space. Controls how far this motion extends.")]
             public float rangeCalc = 1;
+            [Tooltip("Computed direction vector (auto-calculated from degree and range).")]
             public Vector2 directionCalc;
 
             internal Vector2 CalcDirection()

@@ -17,7 +17,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
     [DisplayName("BovineLabs/Timeline/Animation/Rukhanka Clip")]
     public class RukhankaAnimationTrack : DOTSTrack
     {
-        [Tooltip("Layer Index allows you to blend multiple tracks. 0 = Base, 1+ = Overrides.")]
+        [Tooltip("Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers. Multiple tracks on the same rig can have different layer indices.")]
         public int LayerIndex;
 
         protected override void Bake(BakingContext context)
