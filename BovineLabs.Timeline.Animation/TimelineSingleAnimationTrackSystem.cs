@@ -126,8 +126,7 @@ namespace BovineLabs.Timeline.Animation
             {
                 var (keys, count) = ActiveAnimations.GetUniqueKeyArray(Allocator.Temp);
                 UniqueKeys.Clear();
-                for (int i = 0; i < count; i++)
-                    UniqueKeys.Add(keys[i]);
+                UniqueKeys.AddRange(keys.GetSubArray(0, count));
                 keys.Dispose();
             }
         }
