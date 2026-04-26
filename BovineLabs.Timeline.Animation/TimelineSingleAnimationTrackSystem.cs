@@ -1,6 +1,5 @@
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
 using Rukhanka;
 using Unity.Burst;
@@ -56,7 +55,7 @@ namespace BovineLabs.Timeline.Animation
             state.Dependency = new ExtractKeysJob
             {
                 ActiveAnimations = activeAnimationsMap,
-                UniqueKeys = uniqueKeys,
+                UniqueKeys = uniqueKeys
             }.Schedule(state.Dependency);
 
             state.Dependency = new ApplyAnimationsJob
@@ -77,7 +76,8 @@ namespace BovineLabs.Timeline.Animation
 
             public NativeParallelMultiHashMap<Entity, BlendGroupEntry>.ParallelWriter ActiveAnimations;
 
-            private void Execute(Entity clipEntity, in RukhankaSingleClipData clipData, in TrackBinding binding, in Clip clip, in LocalTime localTime)
+            private void Execute(Entity clipEntity, in RukhankaSingleClipData clipData, in TrackBinding binding,
+                in Clip clip, in LocalTime localTime)
             {
                 if (!TrackDataLookup.TryGetComponent(clip.Track, out var trackData)) return;
 
@@ -109,9 +109,9 @@ namespace BovineLabs.Timeline.Animation
             private uint ComputeMotionId(Entity track, int layerIndex, Hash128 clipHash)
             {
                 var hash = (uint)track.Index;
-                hash = hash * 31 ^ (uint)track.Version;
-                hash = hash * 31 ^ (uint)layerIndex;
-                hash = hash * 31 ^ (uint)clipHash.GetHashCode();
+                hash = (hash * 31) ^ (uint)track.Version;
+                hash = (hash * 31) ^ (uint)layerIndex;
+                hash = (hash * 31) ^ (uint)clipHash.GetHashCode();
                 return hash;
             }
         }

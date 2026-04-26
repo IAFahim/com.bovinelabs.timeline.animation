@@ -6,7 +6,6 @@ using BovineLabs.Timeline.PlayerInputs.Data;
 using Rukhanka;
 using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -163,7 +162,7 @@ namespace BovineLabs.Timeline.Animation
             public void Execute()
             {
                 var keys = ClipDataMap.GetKeyArray(Allocator.Temp);
-                for (int i = 0; i < keys.Length; i++)
+                for (var i = 0; i < keys.Length; i++)
                     TargetMap.TryAdd(keys[i], 0);
                 keys.Dispose();
             }
@@ -180,7 +179,10 @@ namespace BovineLabs.Timeline.Animation
             [ReadOnly] public UnsafeComponentLookup<DefaultBlendGroupFallback> DefaultFallbackLookup;
 
             [NativeDisableParallelForRestriction] public UnsafeBufferLookup<BlendGroupEntry> BlendGroupLookup;
-            [NativeDisableParallelForRestriction] public UnsafeBufferLookup<BlendTreePlaybackStateElement> PlaybackStateLookup;
+
+            [NativeDisableParallelForRestriction]
+            public UnsafeBufferLookup<BlendTreePlaybackStateElement> PlaybackStateLookup;
+
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<FallbackBlend> FallbackLookup;
 
             public float GlobalDeltaTime;
@@ -200,7 +202,6 @@ namespace BovineLabs.Timeline.Animation
                 var processedTracks = new NativeHashMap<Entity, PerTrackBlend>(16, Allocator.Temp);
 
                 if (ClipDataMap.TryGetFirstValue(targetEntity, out var clipData, out var it))
-                {
                     do
                     {
                         if (!processedTracks.TryGetValue(clipData.Track, out var blend))
@@ -218,10 +219,9 @@ namespace BovineLabs.Timeline.Animation
 
                         processedTracks[clipData.Track] = blend;
                     } while (ClipDataMap.TryGetNextValue(out clipData, ref it));
-                }
 
                 var trackKeys = processedTracks.GetKeyArray(Allocator.Temp);
-                for (int k = 0; k < trackKeys.Length; k++)
+                for (var k = 0; k < trackKeys.Length; k++)
                 {
                     var trackEntity = trackKeys[k];
                     var blend = processedTracks[trackEntity];
@@ -239,11 +239,12 @@ namespace BovineLabs.Timeline.Animation
 
                     var totalWeight = math.saturate(blend.TotalWeight);
                     var blendedDirection = new float2(blend.DirectionX, blend.DirectionY) /
-                                          math.max(0.0001f, blend.TotalWeight);
+                                           math.max(0.0001f, blend.TotalWeight);
 
                     ProcessTrack(targetEntity, trackEntity, blendedDirection, totalWeight,
                         blend.AbsoluteTime);
                 }
+
                 trackKeys.Dispose();
                 processedTracks.Dispose();
 
@@ -301,8 +302,10 @@ namespace BovineLabs.Timeline.Animation
                     !BlendGroupLookup.TryGetBuffer(targetEntity, out var blendGroupBuffer)) return;
 
                 var motionCount = motions.Length;
-                var blendTreeClips = new NativeArray<BlobAssetReference<AnimationClipBlob>>(motionCount, Allocator.Temp);
-                var blendTreePositions = new NativeArray<ScriptedAnimator.BlendTree2DMotionElement>(motionCount, Allocator.Temp);
+                var blendTreeClips =
+                    new NativeArray<BlobAssetReference<AnimationClipBlob>>(motionCount, Allocator.Temp);
+                var blendTreePositions =
+                    new NativeArray<ScriptedAnimator.BlendTree2DMotionElement>(motionCount, Allocator.Temp);
 
                 for (var i = 0; i < motionCount; i++)
                 {
@@ -344,16 +347,19 @@ namespace BovineLabs.Timeline.Animation
 
                 if (PlaybackStateLookup.TryGetBuffer(targetEntity, out var stateBuffer))
                 {
-                    int stateIdx = -1;
-                    for (int i = 0; i < stateBuffer.Length; i++)
-                    {
-                        if (stateBuffer[i].Track == trackEntity) { stateIdx = i; break; }
-                    }
+                    var stateIdx = -1;
+                    for (var i = 0; i < stateBuffer.Length; i++)
+                        if (stateBuffer[i].Track == trackEntity)
+                        {
+                            stateIdx = i;
+                            break;
+                        }
 
                     if (stateIdx == -1)
                     {
                         stateIdx = stateBuffer.Length;
-                        stateBuffer.Add(new BlendTreePlaybackStateElement { Track = trackEntity, IsInitialized = false });
+                        stateBuffer.Add(
+                            new BlendTreePlaybackStateElement { Track = trackEntity, IsInitialized = false });
                     }
 
                     var ps = stateBuffer[stateIdx];
@@ -407,9 +413,9 @@ namespace BovineLabs.Timeline.Animation
             private uint ComputeMotionId(Entity track, int layerIndex, Hash128 clipHash)
             {
                 var hash = (uint)track.Index;
-                hash = hash * 31 ^ (uint)track.Version;
-                hash = hash * 31 ^ (uint)layerIndex;
-                hash = hash * 31 ^ (uint)clipHash.GetHashCode();
+                hash = (hash * 31) ^ (uint)track.Version;
+                hash = (hash * 31) ^ (uint)layerIndex;
+                hash = (hash * 31) ^ (uint)clipHash.GetHashCode();
                 return hash;
             }
         }

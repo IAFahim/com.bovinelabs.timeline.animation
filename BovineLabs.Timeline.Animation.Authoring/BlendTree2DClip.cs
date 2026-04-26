@@ -19,15 +19,12 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            if (!this.TryGetReadEntity(context, out var readEntity))
-            {
-                return;
-            }
+            if (!TryGetReadEntity(context, out var readEntity)) return;
 
             context.Baker.AddComponent(clipEntity, new BlendTree2DDirectionClipData
             {
-                Value = this.BlendParameter,
-                ReadKind = this.ReadKind,
+                Value = BlendParameter,
+                ReadKind = ReadKind,
                 ReadEntity = readEntity
             });
 
@@ -38,27 +35,24 @@ namespace BovineLabs.Timeline.Animation.Authoring
         {
             entity = context.Target;
 
-            if (this.ReadKind == BlendDirectionReadKind.ClipValue)
-            {
-                return true;
-            }
+            if (ReadKind == BlendDirectionReadKind.ClipValue) return true;
 
-            if (this.ReadFrom == null)
+            if (ReadFrom == null)
             {
-                Debug.LogError($"{nameof(BlendTree2DClip)} '{this.name}' needs {nameof(this.ReadFrom)}.");
+                Debug.LogError($"{nameof(BlendTree2DClip)} '{name}' needs {nameof(ReadFrom)}.");
                 return false;
             }
 
-            switch (this.ReadKind)
+            switch (ReadKind)
             {
                 case BlendDirectionReadKind.PhysicsLinearVelocityNormalized:
-                    return this.TryGetLinkedComponent<PhysicsBodyAuthoring>(context, out entity);
+                    return TryGetLinkedComponent<PhysicsBodyAuthoring>(context, out entity);
 
                 case BlendDirectionReadKind.PlayerMoveInput:
-                    return this.TryGetLinkedComponent<InputConsumerAuthoring>(context, out entity);
+                    return TryGetLinkedComponent<InputConsumerAuthoring>(context, out entity);
 
                 default:
-                    Debug.LogError($"{nameof(BlendTree2DClip)} '{this.name}' has invalid {nameof(this.ReadKind)}.");
+                    Debug.LogError($"{nameof(BlendTree2DClip)} '{name}' has invalid {nameof(ReadKind)}.");
                     return false;
             }
         }
@@ -68,9 +62,10 @@ namespace BovineLabs.Timeline.Animation.Authoring
         {
             entity = Entity.Null;
 
-            if (!context.TryResolveLinkComponent<T>(this.ReadFrom, out var component))
+            if (!context.TryResolveLinkComponent<T>(ReadFrom, out var component))
             {
-                Debug.LogError($"{nameof(BlendTree2DClip)} '{this.name}' could not resolve '{this.ReadFrom.name}' with {typeof(T).Name}.");
+                Debug.LogError(
+                    $"{nameof(BlendTree2DClip)} '{name}' could not resolve '{ReadFrom.name}' with {typeof(T).Name}.");
                 return false;
             }
 

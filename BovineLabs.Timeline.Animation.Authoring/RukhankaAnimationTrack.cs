@@ -14,10 +14,11 @@ namespace BovineLabs.Timeline.Animation.Authoring
     [TrackClipType(typeof(RukhankaAnimationClip))]
     [TrackColor(0.16f, 0.54f, 0.88f)]
     [TrackBindingType(typeof(RigDefinitionAuthoring))]
-    [DisplayName("BovineLabs/Timeline/Animation/Rukhanka Clip")]
+    [DisplayName("BovineLabs/Animation/Rukhanka Clip")]
     public class RukhankaAnimationTrack : DOTSTrack
     {
-        [Tooltip("Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers. Multiple tracks on the same rig can have different layer indices.")]
+        [Tooltip(
+            "Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers. Multiple tracks on the same rig can have different layer indices.")]
         public int LayerIndex;
 
         protected override void Bake(BakingContext context)

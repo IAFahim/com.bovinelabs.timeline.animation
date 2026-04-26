@@ -32,12 +32,14 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
                 var commands = new BakerCommands(this, entity);
                 var builder = new TimelineAnimationStateBuilder()
-                    .WithFallback(default, authoring.blendInDuration, authoring.blendOutDuration, authoring.fallbackPlaybackMode);
+                    .WithFallback(default, authoring.blendInDuration, authoring.blendOutDuration,
+                        authoring.fallbackPlaybackMode);
 
                 if (authoring.fallbackAnimationClip != null)
                 {
                     var (fallbackHash, fallbackBlob) = BakeFallbackAnimation(authoring, avatar, entity);
-                    builder.WithFallback(fallbackHash, authoring.blendInDuration, authoring.blendOutDuration, authoring.fallbackPlaybackMode)
+                    builder.WithFallback(fallbackHash, authoring.blendInDuration, authoring.blendOutDuration,
+                            authoring.fallbackPlaybackMode)
                         .WithFallbackBlob(fallbackBlob, fallbackHash);
                 }
 

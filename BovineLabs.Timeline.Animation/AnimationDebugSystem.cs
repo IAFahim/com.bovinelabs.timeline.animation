@@ -33,7 +33,7 @@ namespace BovineLabs.Timeline.Animation
 
                 var overrideWeight = 0f;
                 var fadingClips = 0;
-                for (int i = 0; i < smoothBuf.Length; i++)
+                for (var i = 0; i < smoothBuf.Length; i++)
                 {
                     var s = smoothBuf[i];
                     if (s.BlendMode == AnimationBlendingMode.Override)

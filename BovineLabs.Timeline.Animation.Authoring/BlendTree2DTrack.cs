@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using BovineLabs.Timeline.Authoring;
 using Rukhanka;
 using Rukhanka.Hybrid;
@@ -15,17 +14,20 @@ namespace BovineLabs.Timeline.Animation.Authoring
     [TrackClipType(typeof(BlendTree2DClip))]
     [TrackColor(0.20f, 0.70f, 0.85f)]
     [TrackBindingType(typeof(RigDefinitionAuthoring))]
-    [DisplayName("BovineLabs/Timeline/Animation/Blend Tree 2D")]
+    [DisplayName("BovineLabs/Animation/Blend Tree 2D")]
     public class BlendTree2DTrack : DOTSTrack
     {
-        [Tooltip("Blend tree algorithm: SimpleDirectional for 1D-like with a center, FreeformCartesian for 2D positions, FreeformDirectional for 2D with polar handling.")]
+        [Tooltip(
+            "Blend tree algorithm: SimpleDirectional for 1D-like with a center, FreeformCartesian for 2D positions, FreeformDirectional for 2D with polar handling.")]
         public MotionBlob.Type BlendTreeType = MotionBlob.Type.BlendTree2DSimpleDirectional;
 
-        [Tooltip("Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers. Multiple tracks on the same rig can have different layer indices.")]
+        [Tooltip(
+            "Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers. Multiple tracks on the same rig can have different layer indices.")]
         public int LayerIndex;
 
         [Header("Exit / Fallback Override (Optional)")]
-        [Tooltip("Animation clip to play as fallback when no timeline clips are active on this track's target. Overrides the default fallback set on TimelineAnimationStateAuthoring. Highest layer index wins when multiple tracks specify overrides.")]
+        [Tooltip(
+            "Animation clip to play as fallback when no timeline clips are active on this track's target. Overrides the default fallback set on TimelineAnimationStateAuthoring. Highest layer index wins when multiple tracks specify overrides.")]
         public AnimationClip ExitIdleClip;
 
         [Tooltip("Time in seconds to blend into this fallback clip.")] [Min(0.001f)]
@@ -34,10 +36,12 @@ namespace BovineLabs.Timeline.Animation.Authoring
         [Tooltip("Time in seconds to blend out of this fallback clip.")] [Min(0.001f)]
         public float BlendOutDuration = 0.25f;
 
-        [Tooltip("How the fallback animation wraps. Loop = restart from beginning, Clamp = freeze at last frame, Hold = always show last frame.")]
+        [Tooltip(
+            "How the fallback animation wraps. Loop = restart from beginning, Clamp = freeze at last frame, Hold = always show last frame.")]
         public FallbackPlaybackMode FallbackPlaybackMode = FallbackPlaybackMode.Loop;
 
-        [Tooltip("Motion entries that define the blend tree. Each entry maps an animation clip to a 2D direction/position.")]
+        [Tooltip(
+            "Motion entries that define the blend tree. Each entry maps an animation clip to a 2D direction/position.")]
         public List<BlendTree2DMotionEntry> Motions = new();
 
         private void OnValidate()
@@ -116,10 +120,14 @@ namespace BovineLabs.Timeline.Animation.Authoring
         {
             [Tooltip("Animation clip for this motion entry.")]
             public AnimationClip clip;
+
             [Tooltip("Direction angle in degrees. 0 = forward, 90 = right, -90 = left, 180 = backward.")]
-            [Range(-180, 180)] public float degreeCalc;
+            [Range(-180, 180)]
+            public float degreeCalc;
+
             [Tooltip("Distance from origin in the blend space. Controls how far this motion extends.")]
             public float rangeCalc = 1;
+
             [Tooltip("Computed direction vector (auto-calculated from degree and range).")]
             public Vector2 directionCalc;
 
