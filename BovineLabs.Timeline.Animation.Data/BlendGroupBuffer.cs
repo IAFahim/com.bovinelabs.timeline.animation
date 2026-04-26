@@ -4,7 +4,7 @@ using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
 {
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(0)]
     public struct BlendGroupEntry : IBufferElementData
     {
         public int LayerIndex;
@@ -16,7 +16,7 @@ namespace BovineLabs.Timeline.Animation
         public uint MotionId;
     }
 
-    [InternalBufferCapacity(8)]
+    [InternalBufferCapacity(0)]
     public struct SmoothBlendGroupEntry : IBufferElementData
     {
         public int LayerIndex;
