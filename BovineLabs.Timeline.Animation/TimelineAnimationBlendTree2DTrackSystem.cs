@@ -2,6 +2,7 @@ using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Data.Schedular;
 using BovineLabs.Timeline.PlayerInputs.Data;
 using Rukhanka;
 using Unity.Burst;
@@ -39,6 +40,7 @@ namespace BovineLabs.Timeline.Animation
 
             state.Dependency = new UpdateDynamicBlendParametersJob
             {
+                ClockLookup = SystemAPI.GetComponentLookup<ClockData>(true),
                 PhysicsVelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(true),
                 PlayerMoveInputLookup = SystemAPI.GetComponentLookup<PlayerMoveInput>(true)
             }.ScheduleParallel(state.Dependency);
@@ -86,41 +88,45 @@ namespace BovineLabs.Timeline.Animation
         [WithAll(typeof(ClipActive))]
         private partial struct UpdateDynamicBlendParametersJob : IJobEntity
         {
+            [ReadOnly] public ComponentLookup<ClockData> ClockLookup;
             [ReadOnly] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             [ReadOnly] public ComponentLookup<PlayerMoveInput> PlayerMoveInputLookup;
 
-            private void Execute(ref BlendTree2DDirectionClipData clipData)
+            private void Execute(ref BlendTree2DDirectionClipData clipData, in TrackBinding binding)
             {
+                var dt = 0.016f;
+                if (ClockLookup.TryGetComponent(binding.Value, out var clock)) dt = (float)clock.DeltaTime;
+
+                if (!TryGetTargetDirection(clipData, out var targetValue)) return;
+
+                clipData.Value = math.lerp(clipData.Value, targetValue, math.saturate(dt * 15f));
+            }
+
+            private bool TryGetTargetDirection(in BlendTree2DDirectionClipData clipData, out float2 targetValue)
+            {
+                targetValue = float2.zero;
+
                 if (clipData.ReadKind == BlendDirectionReadKind.PhysicsLinearVelocityNormalized)
                 {
-                    if (PhysicsVelocityLookup.TryGetComponent(clipData.ReadEntity, out var pv))
-                    {
-                        var vel2d = new float2(pv.Linear.x, pv.Linear.z);
-                        var lengthSq = math.lengthsq(vel2d);
-                        clipData.Value = lengthSq > 0.0001f
-                            ? vel2d / math.sqrt(lengthSq)
-                            : float2.zero;
-                    }
-                    else
-                    {
-                        clipData.Value = float2.zero;
-                    }
+                    if (!PhysicsVelocityLookup.TryGetComponent(clipData.ReadEntity, out var pv)) return false;
+
+                    var vel2d = new float2(pv.Linear.x, pv.Linear.z);
+                    var lengthSq = math.lengthsq(vel2d);
+                    targetValue = lengthSq > 0.0001f ? vel2d / math.sqrt(lengthSq) : float2.zero;
+                    return true;
                 }
-                else if (clipData.ReadKind == BlendDirectionReadKind.PlayerMoveInput)
+
+                if (clipData.ReadKind == BlendDirectionReadKind.PlayerMoveInput)
                 {
-                    if (PlayerMoveInputLookup.TryGetComponent(clipData.ReadEntity, out var moveInput))
-                    {
-                        var vel2d = moveInput.Value;
-                        var lengthSq = math.lengthsq(vel2d);
-                        clipData.Value = lengthSq > 1f
-                            ? vel2d / math.sqrt(lengthSq)
-                            : vel2d;
-                    }
-                    else
-                    {
-                        clipData.Value = float2.zero;
-                    }
+                    if (!PlayerMoveInputLookup.TryGetComponent(clipData.ReadEntity, out var moveInput)) return false;
+
+                    var vel2d = moveInput.Value;
+                    var lengthSq = math.lengthsq(vel2d);
+                    targetValue = lengthSq > 1f ? vel2d / math.sqrt(lengthSq) : vel2d;
+                    return true;
                 }
+
+                return false;
             }
         }
 

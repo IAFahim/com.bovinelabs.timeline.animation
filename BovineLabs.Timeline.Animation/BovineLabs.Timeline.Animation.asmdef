@@ -7,6 +7,7 @@
     "BovineLabs.Timeline",
     "BovineLabs.Timeline.Core",
     "BovineLabs.Timeline.Data",
+    "BovineLabs.Timeline.Time.Data",
     "BovineLabs.Timeline.Animation.Data",
     "BovineLabs.Reaction.Data",
     "BovineLabs.Timeline.PlayerInputs.Data",
