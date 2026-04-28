@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using BovineLabs.Timeline.Authoring;
 using BovineLabs.Core.PropertyDrawers;
+using BovineLabs.Timeline.Authoring;
 using Rukhanka;
 using Rukhanka.Hybrid;
 using Unity.Entities;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Timeline;
 
@@ -55,7 +56,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 if (prev != motion.directionCalc) changed = true;
             }
 #if UNITY_EDITOR
-            if (changed) UnityEditor.EditorUtility.SetDirty(this);
+            if (changed) EditorUtility.SetDirty(this);
 #endif
         }
 
@@ -68,7 +69,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
             if (rigDef == null)
             {
-                Debug.LogWarning($"[BlendTree2DTrack] '{name}' has no RigDefinitionAuthoring binding — animation data will not be baked.");
+                Debug.LogWarning(
+                    $"[BlendTree2DTrack] '{name}' has no RigDefinitionAuthoring binding — animation data will not be baked.");
                 base.Bake(context);
                 return;
             }
@@ -139,8 +141,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
             [Tooltip("Distance from origin in the blend space. Controls how far this motion extends.")]
             public float rangeCalc = 1;
 
-            [Tooltip("Computed direction vector (auto-calculated from degree and range).")]
-            [InspectorReadOnly]
+            [Tooltip("Computed direction vector (auto-calculated from degree and range).")] [InspectorReadOnly]
             public Vector2 directionCalc;
 
             internal Vector2 CalcDirection()

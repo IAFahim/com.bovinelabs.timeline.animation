@@ -26,7 +26,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
             var rigDef = context.Director.ResolveRigDefinition(this);
             if (rigDef == null)
             {
-                Debug.LogWarning($"[RukhankaAnimationTrack] '{name}' has no RigDefinitionAuthoring binding — animation data will not be baked.");
+                Debug.LogWarning(
+                    $"[RukhankaAnimationTrack] '{name}' has no RigDefinitionAuthoring binding — animation data will not be baked.");
                 base.Bake(context);
                 return;
             }
