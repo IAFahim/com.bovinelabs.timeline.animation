@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using BovineLabs.Timeline.Authoring;
+using BovineLabs.Core.PropertyDrawers;
 using Rukhanka;
 using Rukhanka.Hybrid;
 using Unity.Entities;
@@ -46,7 +47,16 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
         private void OnValidate()
         {
-            foreach (var motion in Motions) motion.CalcDirection();
+            var changed = false;
+            foreach (var motion in Motions)
+            {
+                var prev = motion.directionCalc;
+                motion.CalcDirection();
+                if (prev != motion.directionCalc) changed = true;
+            }
+#if UNITY_EDITOR
+            if (changed) UnityEditor.EditorUtility.SetDirty(this);
+#endif
         }
 
         protected override void Bake(BakingContext context)
@@ -58,6 +68,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
             if (rigDef == null)
             {
+                Debug.LogWarning($"[BlendTree2DTrack] '{name}' has no RigDefinitionAuthoring binding — animation data will not be baked.");
                 base.Bake(context);
                 return;
             }
@@ -129,6 +140,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
             public float rangeCalc = 1;
 
             [Tooltip("Computed direction vector (auto-calculated from degree and range).")]
+            [InspectorReadOnly]
             public Vector2 directionCalc;
 
             internal Vector2 CalcDirection()

@@ -53,31 +53,27 @@ namespace BovineLabs.Timeline.Animation
                     smoothEntries[i] = s;
                 }
 
+                var smoothIndex = new NativeHashMap<uint, int>(smoothEntries.Length, Allocator.Temp);
+                for (var j = 0; j < smoothEntries.Length; j++)
+                    smoothIndex.TryAdd(smoothEntries[j].MotionId, j);
+
                 for (var i = 0; i < blendEntries.Length; i++)
                 {
                     var request = blendEntries[i];
-                    var found = false;
 
-                    for (var j = 0; j < smoothEntries.Length; j++)
-                        if (smoothEntries[j].ClipHash == request.ClipHash &&
-                            smoothEntries[j].LayerIndex == request.LayerIndex &&
-                            smoothEntries[j].BlendMode == request.BlendMode &&
-                            smoothEntries[j].AvatarMaskHash == request.AvatarMaskHash &&
-                            smoothEntries[j].MotionId == request.MotionId)
-                        {
-                            var s = smoothEntries[j];
-                            s.TargetWeight = request.Weight;
-                            s.NormalizedTime = request.NormalizedTime;
-                            s.LayerIndex = request.LayerIndex;
-                            s.BlendMode = request.BlendMode;
-                            s.AvatarMaskHash = request.AvatarMaskHash;
-                            s.MotionId = request.MotionId;
-                            smoothEntries[j] = s;
-                            found = true;
-                            break;
-                        }
-
-                    if (!found)
+                    if (smoothIndex.TryGetValue(request.MotionId, out var j))
+                    {
+                        var s = smoothEntries[j];
+                        s.TargetWeight = request.Weight;
+                        s.NormalizedTime = request.NormalizedTime;
+                        s.LayerIndex = request.LayerIndex;
+                        s.BlendMode = request.BlendMode;
+                        s.AvatarMaskHash = request.AvatarMaskHash;
+                        s.MotionId = request.MotionId;
+                        smoothEntries[j] = s;
+                    }
+                    else
+                    {
                         smoothEntries.Add(new SmoothBlendGroupEntry
                         {
                             LayerIndex = request.LayerIndex,
@@ -89,7 +85,11 @@ namespace BovineLabs.Timeline.Animation
                             AvatarMaskHash = request.AvatarMaskHash,
                             MotionId = request.MotionId
                         });
+                        smoothIndex.Add(request.MotionId, smoothEntries.Length - 1);
+                    }
                 }
+
+                smoothIndex.Dispose();
 
                 var totalOverrideWeight = 0f;
 
