@@ -53,24 +53,28 @@ namespace BovineLabs.Timeline.Animation
                     smoothEntries[i] = s;
                 }
 
-                var smoothIndex = new NativeHashMap<uint, int>(smoothEntries.Length, Allocator.Temp);
-                for (var j = 0; j < smoothEntries.Length; j++)
-                    smoothIndex.TryAdd(smoothEntries[j].MotionId, j);
-
                 for (var i = 0; i < blendEntries.Length; i++)
                 {
                     var request = blendEntries[i];
+                    var smoothIndex = -1;
 
-                    if (smoothIndex.TryGetValue(request.MotionId, out var j))
+                    for (var j = 0; j < smoothEntries.Length; j++)
+                        if (smoothEntries[j].MotionId == request.MotionId)
+                        {
+                            smoothIndex = j;
+                            break;
+                        }
+
+                    if (smoothIndex != -1)
                     {
-                        var s = smoothEntries[j];
+                        var s = smoothEntries[smoothIndex];
                         s.TargetWeight = request.Weight;
                         s.NormalizedTime = request.NormalizedTime;
                         s.LayerIndex = request.LayerIndex;
                         s.BlendMode = request.BlendMode;
                         s.AvatarMaskHash = request.AvatarMaskHash;
                         s.MotionId = request.MotionId;
-                        smoothEntries[j] = s;
+                        smoothEntries[smoothIndex] = s;
                     }
                     else
                     {
@@ -85,11 +89,8 @@ namespace BovineLabs.Timeline.Animation
                             AvatarMaskHash = request.AvatarMaskHash,
                             MotionId = request.MotionId
                         });
-                        smoothIndex.Add(request.MotionId, smoothEntries.Length - 1);
                     }
                 }
-
-                smoothIndex.Dispose();
 
                 var totalOverrideWeight = 0f;
 

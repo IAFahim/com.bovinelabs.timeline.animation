@@ -24,6 +24,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
         public class Baker : Baker<TimelineAnimationStateAuthoring>
         {
+            private readonly AnimationClip[] singleClipBuffer = new AnimationClip[1];
+
             public override void Bake(TimelineAnimationStateAuthoring authoring)
             {
                 var entity = GetEntity(TransformUsageFlags.None);
@@ -51,8 +53,9 @@ namespace BovineLabs.Timeline.Animation.Authoring
             {
                 var fallbackHash = BakingUtils.ComputeAnimationHash(authoring.fallbackAnimationClip, avatar);
                 var animationBaker = new AnimationClipBaker();
-                var bakedAnimations = animationBaker.BakeAnimations(this, new[] { authoring.fallbackAnimationClip },
-                    avatar, authoring.gameObject);
+                singleClipBuffer[0] = authoring.fallbackAnimationClip;
+                var bakedAnimations = animationBaker.BakeAnimations(this, singleClipBuffer, avatar, authoring.gameObject);
+                singleClipBuffer[0] = null;
 
                 BlobAssetReference<AnimationClipBlob> fallbackBlob = default;
 
