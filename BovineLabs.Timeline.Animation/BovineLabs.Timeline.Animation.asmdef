@@ -9,7 +9,6 @@
     "BovineLabs.Timeline.Data",
     "BovineLabs.Timeline.Animation.Data",
     "BovineLabs.Reaction.Data",
-    "BovineLabs.Timeline.PlayerInputs.Data",
     "Rukhanka.Runtime",
     "Unity.Burst",
     "Unity.Collections",
