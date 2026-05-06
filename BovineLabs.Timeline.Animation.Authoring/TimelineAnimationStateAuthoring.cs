@@ -54,7 +54,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 var fallbackHash = BakingUtils.ComputeAnimationHash(authoring.fallbackAnimationClip, avatar);
                 var animationBaker = new AnimationClipBaker();
                 singleClipBuffer[0] = authoring.fallbackAnimationClip;
-                var bakedAnimations = animationBaker.BakeAnimations(this, singleClipBuffer, avatar, authoring.gameObject);
+                var bakedAnimations =
+                    animationBaker.BakeAnimations(this, singleClipBuffer, avatar, authoring.gameObject);
                 singleClipBuffer[0] = null;
 
                 BlobAssetReference<AnimationClipBlob> fallbackBlob = default;

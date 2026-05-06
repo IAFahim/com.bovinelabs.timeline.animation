@@ -1,7 +1,6 @@
+using BovineLabs.Core.Collections;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.Jobs;
-using BovineLabs.Core.Collections;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.PlayerInputs.Data;
 using Rukhanka;
@@ -241,16 +240,12 @@ namespace BovineLabs.Timeline.Animation
                     } while (ClipDataMap.TryGetNextValue(out clipData, ref it));
 
                 if (fallbackToMap)
-                {
                     ProcessTracksWithList(targetEntity, ref bestFallbackLayer, ref bestFallback,
                         ref hasFallbackCandidate);
-                }
                 else
-                {
                     for (var i = 0; i < processedTrackCount; i++)
                         ProcessTrackBlend(targetEntity, processedTracks[i], ref bestFallbackLayer, ref bestFallback,
                             ref hasFallbackCandidate);
-                }
 
                 if (hasFallbackCandidate)
                 {
@@ -378,7 +373,8 @@ namespace BovineLabs.Timeline.Animation
                 if (motionCount <= stackMotionCapacity)
                 {
                     var blendTreeClipsData = stackalloc BlobAssetReference<AnimationClipBlob>[stackMotionCapacity];
-                    var blendTreePositionsData = stackalloc ScriptedAnimator.BlendTree2DMotionElement[stackMotionCapacity];
+                    var blendTreePositionsData =
+                        stackalloc ScriptedAnimator.BlendTree2DMotionElement[stackMotionCapacity];
                     var blendTreeClips = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<
                         BlobAssetReference<AnimationClipBlob>>(blendTreeClipsData, motionCount, Allocator.None);
                     var blendTreePositions = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<

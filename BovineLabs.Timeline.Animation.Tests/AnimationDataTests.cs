@@ -1,7 +1,7 @@
-using BovineLabs.Timeline.Animation;
 using NUnit.Framework;
 using Rukhanka;
 using Unity.Entities;
+using Unity.Mathematics;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation.Tests
@@ -409,7 +409,7 @@ namespace BovineLabs.Timeline.Animation.Tests
             var hash = new Hash128(100u, 200u, 250u, 150u);
             var element = new ScriptedAnimator.BlendTree2DMotionElement
             {
-                pos = new Unity.Mathematics.float2(1.5f, 2.5f),
+                pos = new float2(1.5f, 2.5f),
                 motionIndex = 3
             };
             var d = new BlendTree2DMotionData
@@ -419,7 +419,7 @@ namespace BovineLabs.Timeline.Animation.Tests
             };
             Assert.AreEqual(hash, d.AnimationHash);
             Assert.AreEqual(element, d.BlendTree2DMotionElement);
-            Assert.AreEqual(new Unity.Mathematics.float2(1.5f, 2.5f), d.BlendTree2DMotionElement.pos);
+            Assert.AreEqual(new float2(1.5f, 2.5f), d.BlendTree2DMotionElement.pos);
             Assert.AreEqual(3, d.BlendTree2DMotionElement.motionIndex);
         }
     }
@@ -439,7 +439,7 @@ namespace BovineLabs.Timeline.Animation.Tests
             var d = new BlendTree2DDirectionClipData();
             Assert.AreEqual(BlendDirectionReadKind.ClipValue, d.ReadKind);
             Assert.AreEqual(Entity.Null, d.ReadEntity);
-            Assert.AreEqual(Unity.Mathematics.float2.zero, d.Value);
+            Assert.AreEqual(float2.zero, d.Value);
         }
 
         [Test]
@@ -450,11 +450,11 @@ namespace BovineLabs.Timeline.Animation.Tests
             {
                 ReadKind = BlendDirectionReadKind.PlayerMoveInput,
                 ReadEntity = entity,
-                Value = new Unity.Mathematics.float2(3.0f, 4.0f)
+                Value = new float2(3.0f, 4.0f)
             };
             Assert.AreEqual(BlendDirectionReadKind.PlayerMoveInput, d.ReadKind);
             Assert.AreEqual(entity, d.ReadEntity);
-            Assert.AreEqual(new Unity.Mathematics.float2(3.0f, 4.0f), d.Value);
+            Assert.AreEqual(new float2(3.0f, 4.0f), d.Value);
         }
     }
 
