@@ -8,12 +8,12 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
 {
     public struct TimelineAnimationStateBuilder
     {
-        private Hash128 fallbackClipHash;
-        private float blendInSpeed;
-        private float blendOutSpeed;
-        private BlobAssetReference<AnimationClipBlob> fallbackBlob;
-        private Hash128 fallbackBlobHash;
-        private FallbackPlaybackMode playbackMode;
+        private Hash128 _fallbackClipHash;
+        private float _blendInSpeed;
+        private float _blendOutSpeed;
+        private BlobAssetReference<AnimationClipBlob> _fallbackBlob;
+        private Hash128 _fallbackBlobHash;
+        private FallbackPlaybackMode _playbackMode;
 
         public TimelineAnimationStateBuilder WithFallback(
             Hash128 clipHash,
@@ -21,10 +21,10 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
             float blendOutDuration,
             FallbackPlaybackMode mode = FallbackPlaybackMode.Loop)
         {
-            fallbackClipHash = clipHash;
-            blendInSpeed = 1f / math.max(0.001f, blendInDuration);
-            blendOutSpeed = 1f / math.max(0.001f, blendOutDuration);
-            playbackMode = mode;
+            _fallbackClipHash = clipHash;
+            _blendInSpeed = 1f / math.max(0.001f, blendInDuration);
+            _blendOutSpeed = 1f / math.max(0.001f, blendOutDuration);
+            _playbackMode = mode;
             return this;
         }
 
@@ -32,8 +32,8 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
             BlobAssetReference<AnimationClipBlob> blob,
             Hash128 hash)
         {
-            fallbackBlob = blob;
-            fallbackBlobHash = hash;
+            _fallbackBlob = blob;
+            _fallbackBlobHash = hash;
             return this;
         }
 
@@ -44,10 +44,10 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
 
             var activeFallback = new FallbackBlend
             {
-                ClipHash = fallbackClipHash,
-                BlendInSpeed = blendInSpeed,
-                BlendOutSpeed = blendOutSpeed,
-                PlaybackMode = playbackMode,
+                ClipHash = _fallbackClipHash,
+                BlendInSpeed = _blendInSpeed,
+                BlendOutSpeed = _blendOutSpeed,
+                PlaybackMode = _playbackMode,
                 LayerIndex = 0,
                 BlendMode = AnimationBlendingMode.Override,
                 AvatarMaskHash = default
@@ -57,22 +57,22 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
 
             builder.AddComponent(new DefaultBlendGroupFallback
             {
-                ClipHash = fallbackClipHash,
-                BlendInSpeed = blendInSpeed,
-                BlendOutSpeed = blendOutSpeed,
-                PlaybackMode = playbackMode,
+                ClipHash = _fallbackClipHash,
+                BlendInSpeed = _blendInSpeed,
+                BlendOutSpeed = _blendOutSpeed,
+                PlaybackMode = _playbackMode,
                 LayerIndex = 0,
                 BlendMode = AnimationBlendingMode.Override,
                 AvatarMaskHash = default
             });
 
-            if (fallbackBlob.IsCreated)
+            if (_fallbackBlob.IsCreated)
             {
                 var dbBuffer = builder.AddBuffer<NewBlobAssetDatabaseRecord<AnimationClipBlob>>();
                 dbBuffer.Add(new NewBlobAssetDatabaseRecord<AnimationClipBlob>
                 {
-                    hash = fallbackBlobHash,
-                    value = fallbackBlob
+                    hash = _fallbackBlobHash,
+                    value = _fallbackBlob
                 });
             }
 
