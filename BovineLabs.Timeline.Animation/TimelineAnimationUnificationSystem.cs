@@ -133,7 +133,7 @@ namespace BovineLabs.Timeline.Animation
                 }
 
                 var fallbackWeight = 1.0f - totalOverrideWeight;
-                if (fallbackWeight > 0.0001f && fallbackData.ClipHash.IsValid)
+                if (fallbackWeight > 0.0001f && fallbackData.ClipHash != default)
                     if (AnimDB.TryGetValue(fallbackData.ClipHash, out var fallbackClip) && fallbackClip.IsCreated)
                     {
                         if (timer.PreviousFallbackClipHash != fallbackData.ClipHash)

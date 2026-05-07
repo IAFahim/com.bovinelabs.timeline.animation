@@ -60,7 +60,7 @@ namespace BovineLabs.Timeline.Animation
 
             state.Dependency = new ApplyAnimationsJob
             {
-                UniqueKeys = uniqueKeys,
+                UniqueKeys = uniqueKeys.AsDeferredJobArray(),
                 ActiveAnimations = activeAnimationsMap,
                 AnimationBuffers = state.GetUnsafeBufferLookup<BlendGroupEntry>()
             }.Schedule(uniqueKeys, 64, state.Dependency);
@@ -134,7 +134,7 @@ namespace BovineLabs.Timeline.Animation
         [BurstCompile]
         private struct ApplyAnimationsJob : IJobParallelForDefer
         {
-            [ReadOnly] public NativeList<Entity> UniqueKeys;
+            [ReadOnly] public NativeArray<Entity> UniqueKeys;
             [ReadOnly] public NativeParallelMultiHashMap<Entity, BlendGroupEntry> ActiveAnimations;
             [NativeDisableParallelForRestriction] public UnsafeBufferLookup<BlendGroupEntry> AnimationBuffers;
 
