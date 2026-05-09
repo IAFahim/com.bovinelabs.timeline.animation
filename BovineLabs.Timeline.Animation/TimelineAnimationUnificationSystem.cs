@@ -6,17 +6,14 @@ using Unity.Mathematics;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
-{
-    [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+{[UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateBefore(typeof(AnimationProcessSystem))]
     public partial struct TimelineAnimationUnificationSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<BlobDatabaseSingleton>();
-        }
-
-        [BurstCompile]
+        }[BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var blobDB = SystemAPI.GetSingleton<BlobDatabaseSingleton>();
@@ -74,6 +71,12 @@ namespace BovineLabs.Timeline.Animation
                         s.BlendMode = request.BlendMode;
                         s.AvatarMaskHash = request.AvatarMaskHash;
                         s.MotionId = request.MotionId;
+                        
+                        s.PositionOffset = request.PositionOffset;
+                        s.RotationOffset = request.RotationOffset;
+                        s.RemoveStartOffset = request.RemoveStartOffset;
+                        s.ApplyFootIK = request.ApplyFootIK;
+
                         smoothEntries[smoothIndex] = s;
                     }
                     else
@@ -87,7 +90,12 @@ namespace BovineLabs.Timeline.Animation
                             TargetWeight = request.Weight,
                             BlendMode = request.BlendMode,
                             AvatarMaskHash = request.AvatarMaskHash,
-                            MotionId = request.MotionId
+                            MotionId = request.MotionId,
+                            
+                            PositionOffset = request.PositionOffset,
+                            RotationOffset = request.RotationOffset,
+                            RemoveStartOffset = request.RemoveStartOffset,
+                            ApplyFootIK = request.ApplyFootIK
                         });
                     }
                 }
@@ -97,9 +105,7 @@ namespace BovineLabs.Timeline.Animation
                 for (var i = smoothEntries.Length - 1; i >= 0; i--)
                 {
                     var s = smoothEntries[i];
-                    var speed = s.CurrentWeight < s.TargetWeight
-                        ? fallbackData.BlendInSpeed
-                        : fallbackData.BlendOutSpeed;
+                    var speed = s.CurrentWeight < s.TargetWeight ? fallbackData.BlendInSpeed : fallbackData.BlendOutSpeed;
 
                     if (s.CurrentWeight < s.TargetWeight)
                         s.CurrentWeight = math.min(s.TargetWeight, s.CurrentWeight + speed * DeltaTime);
@@ -112,8 +118,7 @@ namespace BovineLabs.Timeline.Animation
                         continue;
                     }
 
-                    if (s.TargetWeight <= 0.0001f && AnimDB.TryGetValue(s.ClipHash, out var clipBlob) &&
-                        clipBlob.IsCreated)
+                    if (s.TargetWeight <= 0.0001f && AnimDB.TryGetValue(s.ClipHash, out var clipBlob) && clipBlob.IsCreated)
                     {
                         var duration = math.max(0.001f, clipBlob.Value.length);
                         s.NormalizedTime += DeltaTime / duration;
@@ -160,7 +165,12 @@ namespace BovineLabs.Timeline.Animation
                             blendMode = fallbackData.BlendMode,
                             layerIndex = fallbackData.LayerIndex,
                             layerWeight = 1.0f,
-                            motionId = 0xFFFFFFFF
+                            motionId = 0xFFFFFFFF,
+                            
+                            positionOffset = float3.zero,
+                            rotationOffset = quaternion.identity,
+                            removeStartOffset = false,
+                            applyFootIK = false
                         });
                     }
 
@@ -169,9 +179,7 @@ namespace BovineLabs.Timeline.Animation
                     var s = smoothEntries[i];
                     if (AnimDB.TryGetValue(s.ClipHash, out var clipBlob) && clipBlob.IsCreated)
                     {
-                        var appliedWeight = s.BlendMode == AnimationBlendingMode.Override
-                            ? s.CurrentWeight * normalizeFactor
-                            : s.CurrentWeight;
+                        var appliedWeight = s.BlendMode == AnimationBlendingMode.Override ? s.CurrentWeight * normalizeFactor : s.CurrentWeight;
 
                         atps.Add(new AnimationToProcessComponent
                         {
@@ -181,7 +189,12 @@ namespace BovineLabs.Timeline.Animation
                             blendMode = s.BlendMode,
                             layerIndex = s.LayerIndex,
                             layerWeight = 1.0f,
-                            motionId = s.MotionId
+                            motionId = s.MotionId,
+                            
+                            positionOffset = s.PositionOffset,
+                            rotationOffset = s.RotationOffset,
+                            removeStartOffset = s.RemoveStartOffset,
+                            applyFootIK = s.ApplyFootIK
                         });
                     }
                 }

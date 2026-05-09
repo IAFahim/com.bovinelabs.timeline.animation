@@ -1,0 +1,40 @@
+{
+  "name": "BovineLabs.Timeline.Animation.Editor",
+  "rootNamespace": "",
+  "references": [
+    "BovineLabs.Timeline.Animation",
+    "BovineLabs.Timeline.Animation.Authoring",
+    "BovineLabs.Timeline.Animation.Data",
+    "Unity.Mathematics.Extensions",
+    "BovineLabs.Core",
+    "BovineLabs.Core.Editor",
+    "BovineLabs.Core.Extensions",
+    "BovineLabs.Core.Extensions.Editor",
+    "BovineLabs.Timeline",
+    "BovineLabs.Timeline.Authoring",
+    "BovineLabs.Timeline.Data",
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Entities",
+    "Unity.Entities.Graphics",
+    "Unity.Entities.Hybrid",
+    "Unity.InputSystem",
+    "Unity.Logging",
+    "Unity.Mathematics",
+    "Unity.Physics",
+    "Unity.Transforms",
+    "Unity.Timeline",
+    "Unity.Timeline.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "noEngineReferences": false
+}

@@ -16,7 +16,8 @@
     "Unity.Entities.Graphics",
     "Unity.Mathematics",
     "Unity.Physics",
-    "Unity.Transforms"
+    "Unity.Transforms",
+    "Unity.Timeline"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

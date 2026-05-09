@@ -14,6 +14,11 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
         private BlobAssetReference<AnimationClipBlob> _fallbackBlob;
         private Hash128 _fallbackBlobHash;
         private FallbackPlaybackMode _playbackMode;
+        
+        private float3 _positionOffset;
+        private quaternion _rotationOffset;
+        private bool _removeStartOffset;
+        private bool _applyFootIK;
 
         public TimelineAnimationStateBuilder WithFallback(
             Hash128 clipHash,
@@ -25,6 +30,15 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
             _blendInSpeed = 1f / math.max(0.001f, blendInDuration);
             _blendOutSpeed = 1f / math.max(0.001f, blendOutDuration);
             _playbackMode = mode;
+            return this;
+        }
+
+        public TimelineAnimationStateBuilder WithFallbackOffsets(float3 pos, quaternion rot, bool removeStart, bool footIK)
+        {
+            _positionOffset = pos;
+            _rotationOffset = rot;
+            _removeStartOffset = removeStart;
+            _applyFootIK = footIK;
             return this;
         }
 
@@ -50,7 +64,11 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
                 PlaybackMode = _playbackMode,
                 LayerIndex = 0,
                 BlendMode = AnimationBlendingMode.Override,
-                AvatarMaskHash = default
+                AvatarMaskHash = default,
+                PositionOffset = _positionOffset,
+                RotationOffset = _rotationOffset,
+                RemoveStartOffset = _removeStartOffset,
+                ApplyFootIK = _applyFootIK
             };
 
             builder.AddComponent(activeFallback);
@@ -63,17 +81,17 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
                 PlaybackMode = _playbackMode,
                 LayerIndex = 0,
                 BlendMode = AnimationBlendingMode.Override,
-                AvatarMaskHash = default
+                AvatarMaskHash = default,
+                PositionOffset = _positionOffset,
+                RotationOffset = _rotationOffset,
+                RemoveStartOffset = _removeStartOffset,
+                ApplyFootIK = _applyFootIK
             });
 
             if (_fallbackBlob.IsCreated)
             {
                 var dbBuffer = builder.AddBuffer<NewBlobAssetDatabaseRecord<AnimationClipBlob>>();
-                dbBuffer.Add(new NewBlobAssetDatabaseRecord<AnimationClipBlob>
-                {
-                    hash = _fallbackBlobHash,
-                    value = _fallbackBlob
-                });
+                dbBuffer.Add(new NewBlobAssetDatabaseRecord<AnimationClipBlob> { hash = _fallbackBlobHash, value = _fallbackBlob });
             }
 
             builder.AddBuffer<BlendGroupEntry>();
