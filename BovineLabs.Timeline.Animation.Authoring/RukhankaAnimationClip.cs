@@ -27,18 +27,22 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
 #if UNITY_EDITOR
         /// <summary>
-        /// In edit mode, return a native AnimationClipPlayable so Unity's PlayableGraph
-        /// can scrub the animation in the Timeline editor window.
+        /// In edit mode, return an AnimationPlayableAsset-driven playable so Unity's
+        /// PlayableGraph can scrub the animation in the Timeline editor window.
+        /// Uses Unity's built-in AnimationPlayableAsset which has access to internal
+        /// APIs (AnimationOffsetPlayable, SetRemoveStartOffset) via InternalsVisibleTo.
         /// </summary>
         public override Playable CreatePlayable(PlayableGraph graph, GameObject owner)
         {
             if (!Application.isPlaying && animationClipHolder != null)
             {
-                var playable = AnimationClipPlayable.Create(graph, animationClipHolder);
-                playable.SetApplyFootIK(applyFootIK);
-                // Note: SetRemoveStartOffset is internal — not available in custom assemblies.
-                // The clip will play with its baked-in start offset in editor preview.
-                return playable;
+                // Reuse Unity's built-in clip playable creation — it handles
+                // removeStartOffset, applyFootIK, and offset playables internally
+                var asset = ScriptableObject.CreateInstance<UnityEngine.Timeline.AnimationPlayableAsset>();
+                asset.clip = animationClipHolder;
+                asset.applyFootIK = applyFootIK;
+                asset.removeStartOffset = removeStartOffset;
+                return asset.CreatePlayable(graph, owner);
             }
 
             return base.CreatePlayable(graph, owner);

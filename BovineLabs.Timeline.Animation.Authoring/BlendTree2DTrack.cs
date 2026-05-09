@@ -52,16 +52,31 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
 #if UNITY_EDITOR
         /// <summary>
-        /// In edit mode, create a native AnimationMixerPlayable so Unity's Timeline
-        /// editor can show track-level structure.
-        /// Individual BlendTree2D clips return empty playables — blend tree content
-        /// is DOTS-only and cannot be previewed via native Playables.
+        /// In edit mode, create a native AnimationMixerPlayable and connect it
+        /// to an AnimationPlayableOutput targeting the bound Animator.
+        /// BlendTree2D clips return empty playables (DOTS-only content),
+        /// but the output is still needed so the track doesn't leave a dangling graph.
         /// </summary>
         public override Playable CreateTrackMixer(PlayableGraph graph, GameObject go, int inputCount)
         {
             if (!Application.isPlaying)
             {
-                return AnimationMixerPlayable.Create(graph, inputCount);
+                var mixer = AnimationMixerPlayable.Create(graph, inputCount);
+
+                // Create AnimationPlayableOutput targeting the bound Animator
+                var director = go.GetComponent<PlayableDirector>();
+                var binding = director != null ? director.GetGenericBinding(this) as Animator : null;
+                if (binding != null)
+                {
+                    // Prevent culling from freezing the Animator in T-pose during preview
+                    binding.cullingMode = 0; // AlwaysAnimate
+
+                    var output = AnimationPlayableOutput.Create(graph, name, binding);
+                    output.SetSourcePlayable(mixer);
+                    output.SetWeight(1.0f);
+                }
+
+                return mixer;
             }
 
             return base.CreateTrackMixer(graph, go, inputCount);
