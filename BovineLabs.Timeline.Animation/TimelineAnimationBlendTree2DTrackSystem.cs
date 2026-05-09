@@ -64,6 +64,11 @@ namespace BovineLabs.Timeline.Animation
                 TargetEntities = targetEntities
             }.Schedule(state.Dependency);
 
+            var isScrubbing = false;
+#if UNITY_EDITOR
+            isScrubbing = !UnityEngine.Application.isPlaying;
+#endif
+
             state.Dependency = new DecomposeAndAppendBlendTreeJob
             {
                 TargetEntities = targetEntities,
@@ -76,7 +81,8 @@ namespace BovineLabs.Timeline.Animation
                 BlendGroupLookup = state.GetUnsafeBufferLookup<BlendGroupEntry>(),
                 PlaybackStateLookup = state.GetUnsafeBufferLookup<BlendTreePlaybackStateElement>(),
                 FallbackLookup = state.GetUnsafeComponentLookup<FallbackBlend>(),
-                GlobalDeltaTime = SystemAPI.Time.DeltaTime
+                GlobalDeltaTime = SystemAPI.Time.DeltaTime,
+                IsScrubbing = isScrubbing // ADDED
             }.Schedule(targetEntities, 64, state.Dependency);
 
             targetEntities.Dispose(state.Dependency);
@@ -185,6 +191,7 @@ namespace BovineLabs.Timeline.Animation
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<FallbackBlend> FallbackLookup;
 
             public float GlobalDeltaTime;
+            public bool IsScrubbing;
 
             public unsafe void Execute(int index)
             {
@@ -489,7 +496,7 @@ namespace BovineLabs.Timeline.Animation
                     else
                     {
                         var delta = absoluteTime - ps.PreviousAbsoluteTime;
-                        if (math.abs(delta) > 1.0f) delta = GlobalDeltaTime;
+                        if (!IsScrubbing && math.abs(delta) > 1.0f) delta = GlobalDeltaTime;
                         ps.AccumulatedTime += delta / weightedDuration;
                         ps.PreviousAbsoluteTime = absoluteTime;
                         normalizedTime = math.frac(ps.AccumulatedTime);

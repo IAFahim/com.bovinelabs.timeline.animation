@@ -6,22 +6,31 @@ using Unity.Mathematics;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
-{[UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+{
+    [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateBefore(typeof(AnimationProcessSystem))]
     public partial struct TimelineAnimationUnificationSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<BlobDatabaseSingleton>();
-        }[BurstCompile]
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var blobDB = SystemAPI.GetSingleton<BlobDatabaseSingleton>();
 
+            var isScrubbing = false;
+#if UNITY_EDITOR
+            isScrubbing = !UnityEngine.Application.isPlaying;
+#endif
+
             var job = new UnifyAnimationsJob
             {
                 AnimDB = blobDB.animations,
-                DeltaTime = SystemAPI.Time.DeltaTime
+                DeltaTime = SystemAPI.Time.DeltaTime,
+                IsScrubbing = isScrubbing
             };
 
             state.Dependency = job.ScheduleParallel(state.Dependency);
@@ -32,6 +41,7 @@ namespace BovineLabs.Timeline.Animation
         {
             [ReadOnly] public NativeHashMap<Hash128, BlobAssetReference<AnimationClipBlob>> AnimDB;
             public float DeltaTime;
+            public bool IsScrubbing; // ADDED
 
             public void Execute(
                 Entity entity,
@@ -71,7 +81,7 @@ namespace BovineLabs.Timeline.Animation
                         s.BlendMode = request.BlendMode;
                         s.AvatarMaskHash = request.AvatarMaskHash;
                         s.MotionId = request.MotionId;
-                        
+
                         s.PositionOffset = request.PositionOffset;
                         s.RotationOffset = request.RotationOffset;
                         s.RemoveStartOffset = request.RemoveStartOffset;
@@ -91,7 +101,7 @@ namespace BovineLabs.Timeline.Animation
                             BlendMode = request.BlendMode,
                             AvatarMaskHash = request.AvatarMaskHash,
                             MotionId = request.MotionId,
-                            
+
                             PositionOffset = request.PositionOffset,
                             RotationOffset = request.RotationOffset,
                             RemoveStartOffset = request.RemoveStartOffset,
@@ -107,10 +117,17 @@ namespace BovineLabs.Timeline.Animation
                     var s = smoothEntries[i];
                     var speed = s.CurrentWeight < s.TargetWeight ? fallbackData.BlendInSpeed : fallbackData.BlendOutSpeed;
 
-                    if (s.CurrentWeight < s.TargetWeight)
-                        s.CurrentWeight = math.min(s.TargetWeight, s.CurrentWeight + speed * DeltaTime);
-                    else if (s.CurrentWeight > s.TargetWeight)
-                        s.CurrentWeight = math.max(s.TargetWeight, s.CurrentWeight - speed * DeltaTime);
+                    if (IsScrubbing)
+                    {
+                        s.CurrentWeight = s.TargetWeight;
+                    }
+                    else
+                    {
+                        if (s.CurrentWeight < s.TargetWeight)
+                            s.CurrentWeight = math.min(s.TargetWeight, s.CurrentWeight + speed * DeltaTime);
+                        else if (s.CurrentWeight > s.TargetWeight)
+                            s.CurrentWeight = math.max(s.TargetWeight, s.CurrentWeight - speed * DeltaTime);
+                    }
 
                     if (s.CurrentWeight <= 0.0001f && s.TargetWeight <= 0.0001f)
                     {
@@ -121,7 +138,8 @@ namespace BovineLabs.Timeline.Animation
                     if (s.TargetWeight <= 0.0001f && AnimDB.TryGetValue(s.ClipHash, out var clipBlob) && clipBlob.IsCreated)
                     {
                         var duration = math.max(0.001f, clipBlob.Value.length);
-                        s.NormalizedTime += DeltaTime / duration;
+                        // Safe normalized time increment
+                        s.NormalizedTime += (IsScrubbing ? 0 : DeltaTime) / duration; 
                         s.NormalizedTime = math.frac(s.NormalizedTime);
                     }
 
@@ -166,7 +184,7 @@ namespace BovineLabs.Timeline.Animation
                             layerIndex = fallbackData.LayerIndex,
                             layerWeight = 1.0f,
                             motionId = 0xFFFFFFFF,
-                            
+
                             positionOffset = float3.zero,
                             rotationOffset = quaternion.identity,
                             removeStartOffset = false,
@@ -179,7 +197,9 @@ namespace BovineLabs.Timeline.Animation
                     var s = smoothEntries[i];
                     if (AnimDB.TryGetValue(s.ClipHash, out var clipBlob) && clipBlob.IsCreated)
                     {
-                        var appliedWeight = s.BlendMode == AnimationBlendingMode.Override ? s.CurrentWeight * normalizeFactor : s.CurrentWeight;
+                        var appliedWeight = s.BlendMode == AnimationBlendingMode.Override
+                            ? s.CurrentWeight * normalizeFactor
+                            : s.CurrentWeight;
 
                         atps.Add(new AnimationToProcessComponent
                         {
@@ -190,7 +210,7 @@ namespace BovineLabs.Timeline.Animation
                             layerIndex = s.LayerIndex,
                             layerWeight = 1.0f,
                             motionId = s.MotionId,
-                            
+
                             positionOffset = s.PositionOffset,
                             rotationOffset = s.RotationOffset,
                             removeStartOffset = s.RemoveStartOffset,

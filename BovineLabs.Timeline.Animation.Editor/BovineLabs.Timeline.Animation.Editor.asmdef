@@ -24,7 +24,8 @@
     "Unity.Physics",
     "Unity.Transforms",
     "Unity.Timeline",
-    "Unity.Timeline.Editor"
+    "Unity.Timeline.Editor",
+    "Rukhanka.Runtime"
   ],
   "includePlatforms": [
     "Editor"
