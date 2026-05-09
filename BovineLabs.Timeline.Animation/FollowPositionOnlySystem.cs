@@ -6,7 +6,8 @@ using Unity.Transforms;
 namespace BovineLabs.Timeline.Animation
 {
     [UpdateInGroup(typeof(TransformSystemGroup))]
-    [UpdateAfter(typeof(LocalToWorldSystem))][BurstCompile]
+    [UpdateBefore(typeof(LocalToWorldSystem))]
+    [BurstCompile]
     public partial struct FollowPositionOnlySystem : ISystem
     {
         [BurstCompile]
@@ -19,7 +20,7 @@ namespace BovineLabs.Timeline.Animation
         {
             var job = new FollowPositionJob
             {
-                L2WLookup = SystemAPI.GetComponentLookup<LocalToWorld>(false)
+                TargetL2WLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true)
             };
 
             job.ScheduleParallel();
@@ -28,22 +29,15 @@ namespace BovineLabs.Timeline.Animation
         [BurstCompile]
         public partial struct FollowPositionJob : IJobEntity
         {
-            [NativeDisableParallelForRestriction] 
-            public ComponentLookup<LocalToWorld> L2WLookup;
+            [ReadOnly] public ComponentLookup<LocalToWorld> TargetL2WLookup;
 
             public void Execute(Entity entity, in FollowPositionOnly follow, ref LocalTransform lt)
             {
-                if (L2WLookup.TryGetComponent(follow.TargetBone, out var targetL2W))
+                if (TargetL2WLookup.TryGetComponent(follow.TargetBone, out var targetL2W))
                 {
-                    // Update LocalTransform
+                    // Only update LocalTransform.Position; TransformSystemGroup derives LocalToWorld from it.
+                    // Writing LocalToWorld directly would race with TransformSystemGroup.
                     lt.Position = targetL2W.Position;
-                    
-                    // Update LocalToWorld directly via lookup
-                    if (L2WLookup.TryGetComponent(entity, out var selfL2W))
-                    {
-                        selfL2W.Value.c3.xyz = targetL2W.Position;
-                        L2WLookup[entity] = selfL2W;
-                    }
                 }
             }
         }

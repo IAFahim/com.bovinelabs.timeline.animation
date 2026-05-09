@@ -2,32 +2,51 @@
 using Unity.Entities;
 using BovineLabs.Timeline;
 using Rukhanka;
+using System.Collections.Generic;
 
 namespace BovineLabs.Timeline.Animation.Editor
 {
     [WorldSystemFilter(WorldSystemFilterFlags.Editor)][UpdateInGroup(typeof(InitializationSystemGroup), OrderLast = true)]
     public partial class EditorPreviewBootstrap : SystemBase
     {
+        private readonly List<SystemHandle> registeredSystems = new();
+
         protected override void OnCreate()
         {
             var timelineGroup = World.GetOrCreateSystemManaged<TimelineComponentAnimationGroup>();
-            
-            var blendTreeSys = World.GetOrCreateSystem<TimelineAnimationBlendTree2DTrackSystem>();
-            var singleTrackSys = World.GetOrCreateSystem<TimelineSingleAnimationTrackSystem>();
-            var unificSys = World.GetOrCreateSystem<TimelineAnimationUnificationSystem>();
-            var disableCull = World.GetOrCreateSystem<DisableAnimationCullingInEditorSystem>();
-            var aps = World.GetOrCreateSystem<AnimationProcessSystem>();
-            var aas = World.GetOrCreateSystem<AnimationApplicationSystem>();
-            
-            timelineGroup.AddSystemToUpdateList(blendTreeSys);
-            timelineGroup.AddSystemToUpdateList(singleTrackSys);
-            timelineGroup.AddSystemToUpdateList(unificSys);
-            timelineGroup.AddSystemToUpdateList(disableCull);
-            timelineGroup.AddSystemToUpdateList(aps);
-            timelineGroup.AddSystemToUpdateList(aas);
+
+            SystemHandle[] systems =
+            {
+                World.GetOrCreateSystem<TimelineAnimationBlendTree2DTrackSystem>(),
+                World.GetOrCreateSystem<TimelineSingleAnimationTrackSystem>(),
+                World.GetOrCreateSystem<TimelineAnimationUnificationSystem>(),
+                World.GetOrCreateSystem<DisableAnimationCullingInEditorSystem>(),
+                World.GetOrCreateSystem<AnimationProcessSystem>(),
+                World.GetOrCreateSystem<AnimationApplicationSystem>()
+            };
+
+            foreach (var sys in systems)
+            {
+                timelineGroup.AddSystemToUpdateList(sys);
+                registeredSystems.Add(sys);
+            }
 
             timelineGroup.SortSystems();
             Enabled = false;
+        }
+
+        protected override void OnDestroy()
+        {
+            if (World.IsCreated)
+            {
+                var timelineGroup = World.GetExistingSystemManaged<TimelineComponentAnimationGroup>();
+                if (timelineGroup != null)
+                {
+                    foreach (var sys in registeredSystems)
+                        timelineGroup.RemoveSystemFromUpdateList(sys);
+                }
+            }
+            registeredSystems.Clear();
         }
 
         protected override void OnUpdate() { }

@@ -19,7 +19,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
         [Header("Fallback Transform Offsets")]
         public Vector3 positionOffset = Vector3.zero;
         public Vector3 eulerAnglesOffset = Vector3.zero;
-        public bool removeStartOffset = true; // DEFAULT TRUE TO FIX SCALING BUG
+        [Tooltip("When enabled, strips the clip's baked root motion start pose so the animation begins at the track/fallback offset position. Only enable when position/rotation offsets are also set.")]
+        public bool removeStartOffset;
         public bool applyFootIK = true;
 
         public class Baker : Baker<TimelineAnimationStateAuthoring>

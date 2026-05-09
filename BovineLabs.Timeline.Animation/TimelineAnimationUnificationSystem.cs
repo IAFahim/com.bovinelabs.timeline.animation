@@ -166,12 +166,22 @@ namespace BovineLabs.Timeline.Animation
                         }
 
                         var duration = math.max(0.001f, fallbackClip.Value.length);
-                        timer.FallbackAccumulatedTime += DeltaTime / duration;
+
+                        // Hold mode: stop accumulating once past clip end (don't wrap)
+                        if (fallbackData.PlaybackMode == FallbackPlaybackMode.Hold)
+                        {
+                            if (timer.FallbackAccumulatedTime < 1f)
+                                timer.FallbackAccumulatedTime += DeltaTime / duration;
+                        }
+                        else
+                        {
+                            timer.FallbackAccumulatedTime += DeltaTime / duration;
+                        }
 
                         var fallbackTime = fallbackData.PlaybackMode switch
                         {
                             FallbackPlaybackMode.Clamp => math.min(timer.FallbackAccumulatedTime, 1f),
-                            FallbackPlaybackMode.Hold => 1f,
+                            FallbackPlaybackMode.Hold => math.min(timer.FallbackAccumulatedTime, 1f),
                             _ => math.frac(timer.FallbackAccumulatedTime)
                         };
 
@@ -185,10 +195,10 @@ namespace BovineLabs.Timeline.Animation
                             layerWeight = 1.0f,
                             motionId = 0xFFFFFFFF,
 
-                            positionOffset = float3.zero,
-                            rotationOffset = quaternion.identity,
-                            removeStartOffset = false,
-                            applyFootIK = false
+                            positionOffset = fallbackData.PositionOffset,
+                            rotationOffset = fallbackData.RotationOffset,
+                            removeStartOffset = fallbackData.RemoveStartOffset,
+                            applyFootIK = fallbackData.ApplyFootIK
                         });
                     }
 

@@ -32,6 +32,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(default(Hash128), d.AvatarMaskHash);
             Assert.AreEqual(default(AnimationBlendingMode), d.BlendMode);
             Assert.AreEqual(0u, d.MotionId);
+            Assert.AreEqual(float3.zero, d.PositionOffset);
+            Assert.AreEqual(default(quaternion), d.RotationOffset);
+            Assert.IsFalse(d.RemoveStartOffset);
+            Assert.IsFalse(d.ApplyFootIK);
         }
 
         [Test]
@@ -39,6 +43,8 @@ namespace BovineLabs.Timeline.Animation.Tests
         {
             var hash = new Hash128(0x12345678u, 0x90ABCDEFu, 0xFEDCBA09u, 0x87654321u);
             var maskHash = new Hash128(1u, 2u, 3u, 4u);
+            var posOff = new float3(1f, 2f, 3f);
+            var rotOff = quaternion.Euler(math.radians(10f), math.radians(20f), math.radians(30f));
             var d = new BlendGroupEntry
             {
                 LayerIndex = 3,
@@ -47,7 +53,11 @@ namespace BovineLabs.Timeline.Animation.Tests
                 Weight = 1.0f,
                 AvatarMaskHash = maskHash,
                 BlendMode = AnimationBlendingMode.Additive,
-                MotionId = 42u
+                MotionId = 42u,
+                PositionOffset = posOff,
+                RotationOffset = rotOff,
+                RemoveStartOffset = true,
+                ApplyFootIK = true
             };
             Assert.AreEqual(3, d.LayerIndex);
             Assert.AreEqual(hash, d.ClipHash);
@@ -56,6 +66,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(maskHash, d.AvatarMaskHash);
             Assert.AreEqual(AnimationBlendingMode.Additive, d.BlendMode);
             Assert.AreEqual(42u, d.MotionId);
+            Assert.AreEqual(posOff, d.PositionOffset);
+            Assert.AreEqual(rotOff, d.RotationOffset);
+            Assert.IsTrue(d.RemoveStartOffset);
+            Assert.IsTrue(d.ApplyFootIK);
         }
     }
 
@@ -86,6 +100,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(default(AnimationBlendingMode), d.BlendMode);
             Assert.AreEqual(default(Hash128), d.AvatarMaskHash);
             Assert.AreEqual(0u, d.MotionId);
+            Assert.AreEqual(float3.zero, d.PositionOffset);
+            Assert.AreEqual(default(quaternion), d.RotationOffset);
+            Assert.IsFalse(d.RemoveStartOffset);
+            Assert.IsFalse(d.ApplyFootIK);
         }
 
         [Test]
@@ -93,6 +111,8 @@ namespace BovineLabs.Timeline.Animation.Tests
         {
             var hash = new Hash128(10u, 20u, 30u, 40u);
             var maskHash = new Hash128(50u, 60u, 70u, 80u);
+            var posOff = new float3(5f, 6f, 7f);
+            var rotOff = quaternion.Euler(math.radians(45f), 0f, 0f);
             var d = new SmoothBlendGroupEntry
             {
                 LayerIndex = 2,
@@ -102,7 +122,11 @@ namespace BovineLabs.Timeline.Animation.Tests
                 TargetWeight = 1.0f,
                 BlendMode = AnimationBlendingMode.Override,
                 AvatarMaskHash = maskHash,
-                MotionId = 99u
+                MotionId = 99u,
+                PositionOffset = posOff,
+                RotationOffset = rotOff,
+                RemoveStartOffset = true,
+                ApplyFootIK = true
             };
             Assert.AreEqual(2, d.LayerIndex);
             Assert.AreEqual(hash, d.ClipHash);
@@ -112,6 +136,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(AnimationBlendingMode.Override, d.BlendMode);
             Assert.AreEqual(maskHash, d.AvatarMaskHash);
             Assert.AreEqual(99u, d.MotionId);
+            Assert.AreEqual(posOff, d.PositionOffset);
+            Assert.AreEqual(rotOff, d.RotationOffset);
+            Assert.IsTrue(d.RemoveStartOffset);
+            Assert.IsTrue(d.ApplyFootIK);
         }
     }
 
@@ -184,6 +212,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(0, d.LayerIndex);
             Assert.AreEqual(default(AnimationBlendingMode), d.BlendMode);
             Assert.AreEqual(default(Hash128), d.AvatarMaskHash);
+            Assert.AreEqual(float3.zero, d.PositionOffset);
+            Assert.AreEqual(default(quaternion), d.RotationOffset);
+            Assert.IsFalse(d.RemoveStartOffset);
+            Assert.IsFalse(d.ApplyFootIK);
         }
 
         [Test]
@@ -191,6 +223,8 @@ namespace BovineLabs.Timeline.Animation.Tests
         {
             var hash = new Hash128(100u, 200u, 150u, 250u);
             var maskHash = new Hash128(300u, 400u, 350u, 450u);
+            var posOff = new float3(10f, 20f, 30f);
+            var rotOff = quaternion.Euler(math.radians(90f), 0f, 0f);
             var d = new FallbackBlend
             {
                 ClipHash = hash,
@@ -199,7 +233,11 @@ namespace BovineLabs.Timeline.Animation.Tests
                 PlaybackMode = FallbackPlaybackMode.Clamp,
                 LayerIndex = 1,
                 BlendMode = AnimationBlendingMode.Additive,
-                AvatarMaskHash = maskHash
+                AvatarMaskHash = maskHash,
+                PositionOffset = posOff,
+                RotationOffset = rotOff,
+                RemoveStartOffset = true,
+                ApplyFootIK = true
             };
             Assert.AreEqual(hash, d.ClipHash);
             Assert.AreEqual(2.5f, d.BlendInSpeed);
@@ -208,6 +246,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(1, d.LayerIndex);
             Assert.AreEqual(AnimationBlendingMode.Additive, d.BlendMode);
             Assert.AreEqual(maskHash, d.AvatarMaskHash);
+            Assert.AreEqual(posOff, d.PositionOffset);
+            Assert.AreEqual(rotOff, d.RotationOffset);
+            Assert.IsTrue(d.RemoveStartOffset);
+            Assert.IsTrue(d.ApplyFootIK);
         }
     }
 
@@ -237,6 +279,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(0, d.LayerIndex);
             Assert.AreEqual(default(AnimationBlendingMode), d.BlendMode);
             Assert.AreEqual(default(Hash128), d.AvatarMaskHash);
+            Assert.AreEqual(float3.zero, d.PositionOffset);
+            Assert.AreEqual(default(quaternion), d.RotationOffset);
+            Assert.IsFalse(d.RemoveStartOffset);
+            Assert.IsFalse(d.ApplyFootIK);
         }
 
         [Test]
@@ -244,6 +290,8 @@ namespace BovineLabs.Timeline.Animation.Tests
         {
             var hash = new Hash128(7u, 8u, 9u, 10u);
             var maskHash = new Hash128(11u, 12u, 13u, 14u);
+            var posOff = new float3(3f, 4f, 5f);
+            var rotOff = quaternion.Euler(0f, math.radians(45f), 0f);
             var d = new DefaultBlendGroupFallback
             {
                 ClipHash = hash,
@@ -252,7 +300,11 @@ namespace BovineLabs.Timeline.Animation.Tests
                 PlaybackMode = FallbackPlaybackMode.Hold,
                 LayerIndex = 2,
                 BlendMode = AnimationBlendingMode.Override,
-                AvatarMaskHash = maskHash
+                AvatarMaskHash = maskHash,
+                PositionOffset = posOff,
+                RotationOffset = rotOff,
+                RemoveStartOffset = true,
+                ApplyFootIK = true
             };
             Assert.AreEqual(hash, d.ClipHash);
             Assert.AreEqual(3.0f, d.BlendInSpeed);
@@ -261,6 +313,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(2, d.LayerIndex);
             Assert.AreEqual(AnimationBlendingMode.Override, d.BlendMode);
             Assert.AreEqual(maskHash, d.AvatarMaskHash);
+            Assert.AreEqual(posOff, d.PositionOffset);
+            Assert.AreEqual(rotOff, d.RotationOffset);
+            Assert.IsTrue(d.RemoveStartOffset);
+            Assert.IsTrue(d.ApplyFootIK);
         }
     }
 
@@ -290,6 +346,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(0, d.LayerIndex);
             Assert.AreEqual(default(AnimationBlendingMode), d.BlendMode);
             Assert.AreEqual(default(Hash128), d.AvatarMaskHash);
+            Assert.AreEqual(float3.zero, d.PositionOffset);
+            Assert.AreEqual(default(quaternion), d.RotationOffset);
+            Assert.IsFalse(d.RemoveStartOffset);
+            Assert.IsFalse(d.ApplyFootIK);
         }
 
         [Test]
@@ -297,6 +357,8 @@ namespace BovineLabs.Timeline.Animation.Tests
         {
             var hash = new Hash128(15u, 16u, 17u, 18u);
             var maskHash = new Hash128(19u, 20u, 21u, 22u);
+            var posOff = new float3(7f, 8f, 9f);
+            var rotOff = quaternion.Euler(0f, 0f, math.radians(30f));
             var d = new TrackFallbackOverride
             {
                 FallbackClipHash = hash,
@@ -305,7 +367,11 @@ namespace BovineLabs.Timeline.Animation.Tests
                 PlaybackMode = FallbackPlaybackMode.Clamp,
                 LayerIndex = 4,
                 BlendMode = AnimationBlendingMode.Additive,
-                AvatarMaskHash = maskHash
+                AvatarMaskHash = maskHash,
+                PositionOffset = posOff,
+                RotationOffset = rotOff,
+                RemoveStartOffset = true,
+                ApplyFootIK = true
             };
             Assert.AreEqual(hash, d.FallbackClipHash);
             Assert.AreEqual(4.0f, d.BlendInSpeed);
@@ -314,6 +380,10 @@ namespace BovineLabs.Timeline.Animation.Tests
             Assert.AreEqual(4, d.LayerIndex);
             Assert.AreEqual(AnimationBlendingMode.Additive, d.BlendMode);
             Assert.AreEqual(maskHash, d.AvatarMaskHash);
+            Assert.AreEqual(posOff, d.PositionOffset);
+            Assert.AreEqual(rotOff, d.RotationOffset);
+            Assert.IsTrue(d.RemoveStartOffset);
+            Assert.IsTrue(d.ApplyFootIK);
         }
     }
 

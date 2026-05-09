@@ -85,6 +85,13 @@ namespace BovineLabs.Timeline.Animation
                 IsScrubbing = isScrubbing // ADDED
             }.Schedule(targetEntities, 64, state.Dependency);
 
+            // Bug #14: Reset FallbackBlend to DefaultBlendGroupFallback for entities
+            // that had no active blend-tree clips this frame.
+            state.Dependency = new ResetStaleFallbackJob
+            {
+                TargetEntities = targetEntities.AsDeferredJobArray()
+            }.Schedule(state.Dependency);
+
             targetEntities.Dispose(state.Dependency);
             clipDataMap.Dispose(state.Dependency);
         }
@@ -250,9 +257,14 @@ namespace BovineLabs.Timeline.Animation
                     ProcessTracksWithList(targetEntity, ref bestFallbackLayer, ref bestFallback,
                         ref hasFallbackCandidate);
                 else
+                {
                     for (var i = 0; i < processedTrackCount; i++)
                         ProcessTrackBlend(targetEntity, processedTracks[i], ref bestFallbackLayer, ref bestFallback,
                             ref hasFallbackCandidate);
+
+                    // Bug #7: Cleanup orphan playback states for tracks no longer active
+                    CleanupOrphanPlaybackStates(targetEntity, processedTracks, processedTrackCount);
+                }
 
                 if (hasFallbackCandidate)
                 {
@@ -267,7 +279,11 @@ namespace BovineLabs.Timeline.Animation
                             PlaybackMode = bestFallback.PlaybackMode,
                             LayerIndex = bestFallback.LayerIndex,
                             BlendMode = bestFallback.BlendMode,
-                            AvatarMaskHash = bestFallback.AvatarMaskHash
+                            AvatarMaskHash = bestFallback.AvatarMaskHash,
+                            PositionOffset = bestFallback.PositionOffset,
+                            RotationOffset = bestFallback.RotationOffset,
+                            RemoveStartOffset = bestFallback.RemoveStartOffset,
+                            ApplyFootIK = bestFallback.ApplyFootIK
                         };
 
                         if (prev.ClipHash != next.ClipHash)
@@ -287,7 +303,11 @@ namespace BovineLabs.Timeline.Animation
                             PlaybackMode = defaults.PlaybackMode,
                             LayerIndex = defaults.LayerIndex,
                             BlendMode = defaults.BlendMode,
-                            AvatarMaskHash = defaults.AvatarMaskHash
+                            AvatarMaskHash = defaults.AvatarMaskHash,
+                            PositionOffset = defaults.PositionOffset,
+                            RotationOffset = defaults.RotationOffset,
+                            RemoveStartOffset = defaults.RemoveStartOffset,
+                            ApplyFootIK = defaults.ApplyFootIK
                         };
 
                         if (prev.ClipHash != next.ClipHash)
@@ -336,6 +356,9 @@ namespace BovineLabs.Timeline.Animation
                 for (var i = 0; i < processedTracks.Length; i++)
                     ProcessTrackBlend(targetEntity, processedTracks[i], ref bestFallbackLayer, ref bestFallback,
                         ref hasFallbackCandidate);
+
+                // Bug #7: Cleanup orphan playback states for tracks no longer active
+                CleanupOrphanPlaybackStatesHeap(targetEntity, ref processedTracks);
                 processedTracks.Dispose();
             }
 
@@ -505,6 +528,15 @@ namespace BovineLabs.Timeline.Animation
                     stateBuffer[stateIdx] = ps;
                 }
 
+                // Compute per-entry offsets from track data
+                // Only strip start offset when offsets are actually authored,
+                // otherwise the character drops to world origin
+                var avatarMaskHash = trackData.ApplyAvatarMask ? trackData.AvatarMaskHash : default;
+                var trackPosOffset = trackData.TrackPositionOffset;
+                var trackRotOffset = trackData.TrackRotationOffset;
+                var hasOffsets = math.lengthsq(trackPosOffset) > 0.0001f ||
+                                math.lengthsq(trackRotOffset.value.xyz) > 0.0001f;
+
                 for (var i = 0; i < internalWeights.Length; i++)
                 {
                     var mw = internalWeights[i];
@@ -519,9 +551,15 @@ namespace BovineLabs.Timeline.Animation
                             ClipHash = clipHash,
                             NormalizedTime = normalizedTime,
                             Weight = mw.weight * totalTimelineWeight,
-                            AvatarMaskHash = default,
+                            AvatarMaskHash = avatarMaskHash,
                             BlendMode = AnimationBlendingMode.Override,
-                            MotionId = ComputeMotionId(trackEntity, trackData.LayerIndex, clipHash)
+                            MotionId = ComputeMotionId(trackEntity, trackData.LayerIndex, clipHash),
+
+                            // Track-level offsets applied to all blend tree entries
+                            PositionOffset = trackPosOffset,
+                            RotationOffset = trackRotOffset,
+                            RemoveStartOffset = hasOffsets,
+                            ApplyFootIK = true
                         });
                     }
                 }
@@ -536,6 +574,99 @@ namespace BovineLabs.Timeline.Animation
                 hash = (hash * 31) ^ (uint)layerIndex;
                 hash = (hash * 31) ^ (uint)clipHash.GetHashCode();
                 return hash;
+            }
+
+            /// <summary>
+            /// Removes BlendTreePlaybackStateElement entries for tracks that are no longer active.
+            /// Stack-based version used when track count is within stackalloc capacity.
+            /// </summary>
+            private unsafe void CleanupOrphanPlaybackStates(
+                Entity targetEntity,
+                PerTrackBlend* activeTracks,
+                int activeTrackCount)
+            {
+                if (!PlaybackStateLookup.TryGetBuffer(targetEntity, out var stateBuffer)) return;
+
+                for (var i = stateBuffer.Length - 1; i >= 0; i--)
+                {
+                    var track = stateBuffer[i].Track;
+                    var found = false;
+                    for (var j = 0; j < activeTrackCount; j++)
+                    {
+                        if (activeTracks[j].TrackEntity == track)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                        stateBuffer.RemoveAtSwapBack(i);
+                }
+            }
+
+            /// <summary>
+            /// Removes BlendTreePlaybackStateElement entries for tracks that are no longer active.
+            /// Heap-based version used when track count exceeds stackalloc capacity.
+            /// </summary>
+            private void CleanupOrphanPlaybackStatesHeap(
+                Entity targetEntity,
+                ref UnsafeList<PerTrackBlend> activeTracks)
+            {
+                if (!PlaybackStateLookup.TryGetBuffer(targetEntity, out var stateBuffer)) return;
+
+                for (var i = stateBuffer.Length - 1; i >= 0; i--)
+                {
+                    var track = stateBuffer[i].Track;
+                    var found = false;
+                    for (var j = 0; j < activeTracks.Length; j++)
+                    {
+                        if (activeTracks[j].TrackEntity == track)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                        stateBuffer.RemoveAtSwapBack(i);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Resets FallbackBlend to DefaultBlendGroupFallback for entities not processed by
+        /// DecomposeAndAppendBlendTreeJob (i.e. entities with no active blend-tree clips).
+        /// </summary>
+        [BurstCompile]
+        private partial struct ResetStaleFallbackJob : IJobEntity
+        {
+            [ReadOnly] public NativeArray<Entity> TargetEntities;
+
+            public void Execute(Entity entity, ref FallbackBlend fallback,
+                in DefaultBlendGroupFallback defaults)
+            {
+                // Check if this entity was already processed by the main job
+                for (var i = 0; i < TargetEntities.Length; i++)
+                {
+                    if (TargetEntities[i] == entity) return; // Already handled
+                }
+
+                // Not processed — reset to default fallback
+                fallback = new FallbackBlend
+                {
+                    ClipHash = defaults.ClipHash,
+                    BlendInSpeed = defaults.BlendInSpeed,
+                    BlendOutSpeed = defaults.BlendOutSpeed,
+                    PlaybackMode = defaults.PlaybackMode,
+                    LayerIndex = defaults.LayerIndex,
+                    BlendMode = defaults.BlendMode,
+                    AvatarMaskHash = defaults.AvatarMaskHash,
+                    PositionOffset = defaults.PositionOffset,
+                    RotationOffset = defaults.RotationOffset,
+                    RemoveStartOffset = defaults.RemoveStartOffset,
+                    ApplyFootIK = defaults.ApplyFootIK
+                };
             }
         }
 
