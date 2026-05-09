@@ -19,13 +19,27 @@ namespace BovineLabs.Timeline.Animation
     [UpdateBefore(typeof(TimelineAnimationUnificationSystem))]
     public partial struct TimelineAnimationBlendTree2DTrackSystem : ISystem
     {
+        /// <summary>
+        /// Accumulated per-clip data for a single timeline clip on a blend tree track.
+        /// Multiple clips may target the same track; their directions and weights are
+        /// combined in <see cref="PerTrackBlend"/> before the actual blend tree evaluation.
+        /// </summary>
         internal struct TrackClipData
         {
             public Entity Track;
             public float AbsoluteTime;
+            /// <summary>Weighted direction contribution from this clip (pre-normalization).</summary>
             public float2 Direction;
+            /// <summary>Clip weight from ClipWeight component or default 1.0.</summary>
             public float Weight;
         }
+
+        // Weight threshold below which a clip/entry is considered fully faded out.
+        private const float WeightEpsilon = 0.0001f;
+        // Minimum clip duration guard to avoid division by zero.
+        private const float MinDuration = 0.001f;
+        // Small epsilon for direction normalization safety.
+        private const float DirectionEpsilon = 0.0001f;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -111,7 +125,7 @@ namespace BovineLabs.Timeline.Animation
                     {
                         var vel2d = new float2(pv.Linear.x, pv.Linear.z);
                         var lengthSq = math.lengthsq(vel2d);
-                        clipData.Value = lengthSq > 0.0001f
+                        clipData.Value = lengthSq > DirectionEpsilon
                             ? vel2d / math.sqrt(lengthSq)
                             : float2.zero;
                     }
@@ -190,11 +204,15 @@ namespace BovineLabs.Timeline.Animation
             [ReadOnly] public UnsafeComponentLookup<TrackFallbackOverride> FallbackOverrideLookup;
             [ReadOnly] public UnsafeComponentLookup<DefaultBlendGroupFallback> DefaultFallbackLookup;
 
+            // Safety: Each thread processes a distinct target entity via IJobParallelForDefer
+            // over the unique-key list. No two threads write the same entity's buffers,
+            // so NativeDisableParallelForRestriction is safe here.
             [NativeDisableParallelForRestriction] public UnsafeBufferLookup<BlendGroupEntry> BlendGroupLookup;
 
             [NativeDisableParallelForRestriction]
             public UnsafeBufferLookup<BlendTreePlaybackStateElement> PlaybackStateLookup;
 
+            // Safety: See above — per-entity uniqueness guarantee from IJobParallelForDefer.
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<FallbackBlend> FallbackLookup;
 
             public float GlobalDeltaTime;
@@ -211,6 +229,8 @@ namespace BovineLabs.Timeline.Animation
                 var hasFallbackCandidate = false;
 
                 const int stackTrackCapacity = 128;
+                // Safety: stackalloc fallback to heap list if exceeded. 128 tracks per entity is
+                // extremely generous; exceeding it means an unusual authoring setup.
                 var processedTracks = stackalloc PerTrackBlend[stackTrackCapacity];
                 var processedTrackCount = 0;
                 var fallbackToMap = false;
@@ -377,9 +397,13 @@ namespace BovineLabs.Timeline.Animation
                     hasFallbackCandidate = true;
                 }
 
+                // Note: saturate caps total timeline weight to [0,1]. When multiple clips
+                // overlap with different weights, this discards excess magnitude rather than
+                // normalizing. This is intentional — overlapping blend-tree clips are rare,
+                // and saturating produces more predictable behavior than dividing by the sum.
                 var totalWeight = math.saturate(blend.TotalWeight);
                 var blendedDirection = new float2(blend.DirectionX, blend.DirectionY) /
-                                       math.max(0.0001f, blend.TotalWeight);
+                                       math.max(DirectionEpsilon, blend.TotalWeight);
 
                 ProcessTrack(targetEntity, trackEntity, blendedDirection, totalWeight, blend.AbsoluteTime);
             }
@@ -442,9 +466,14 @@ namespace BovineLabs.Timeline.Animation
                 for (var i = 0; i < motions.Length; i++)
                 {
                     var motionData = motions[i];
-                    blendTreeClips[i] = AnimDB.TryGetValue(motionData.AnimationHash, out var cb)
-                        ? cb
-                        : BlobAssetReference<AnimationClipBlob>.Null;
+                    var found = AnimDB.TryGetValue(motionData.AnimationHash, out var cb);
+#if UNITY_EDITOR
+                    if (!found)
+                    {
+                        UnityEngine.Debug.LogWarning("[BlendTree2D] Animation hash not found in BlobDatabaseSingleton. Motion entry will be skipped.");
+                    }
+#endif
+                    blendTreeClips[i] = found ? cb : BlobAssetReference<AnimationClipBlob>.Null;
                     blendTreePositions[i] = motionData.BlendTree2DMotionElement;
                 }
             }
@@ -485,7 +514,7 @@ namespace BovineLabs.Timeline.Animation
                 }
 
                 if (totalBlendWeight > 0f) weightedDuration /= totalBlendWeight;
-                if (weightedDuration <= 0.001f) weightedDuration = 1f;
+                if (weightedDuration <= MinDuration) weightedDuration = 1f;
 
                 var normalizedTime = 0f;
 
@@ -531,11 +560,14 @@ namespace BovineLabs.Timeline.Animation
                 // Compute per-entry offsets from track data
                 // Only strip start offset when offsets are actually authored,
                 // otherwise the character drops to world origin
+                // AvatarMask: only apply when authoring explicitly enables it.
+                // When ApplyAvatarMask is false, AvatarMaskHash is default (zero) — guaranteed
+                // by the baker in BlendTree2DTrack.Bake.
                 var avatarMaskHash = trackData.ApplyAvatarMask ? trackData.AvatarMaskHash : default;
                 var trackPosOffset = trackData.TrackPositionOffset;
                 var trackRotOffset = trackData.TrackRotationOffset;
-                var hasOffsets = math.lengthsq(trackPosOffset) > 0.0001f ||
-                                math.lengthsq(trackRotOffset.value.xyz) > 0.0001f;
+                var hasOffsets = math.lengthsq(trackPosOffset) > WeightEpsilon ||
+                                math.lengthsq(trackRotOffset.value.xyz) > WeightEpsilon;
 
                 for (var i = 0; i < internalWeights.Length; i++)
                 {

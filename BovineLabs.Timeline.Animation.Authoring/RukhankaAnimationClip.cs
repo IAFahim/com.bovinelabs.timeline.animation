@@ -3,6 +3,8 @@ using Rukhanka;
 using Rukhanka.Hybrid;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Animation.Authoring
@@ -22,6 +24,26 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
         public override double duration => animationClipHolder != null ? animationClipHolder.length : base.duration;
         public ClipCaps clipCaps => ClipCaps.All;
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// In edit mode, return a native AnimationClipPlayable so Unity's PlayableGraph
+        /// can scrub the animation in the Timeline editor window.
+        /// </summary>
+        public override Playable CreatePlayable(PlayableGraph graph, GameObject owner)
+        {
+            if (!Application.isPlaying && animationClipHolder != null)
+            {
+                var playable = AnimationClipPlayable.Create(graph, animationClipHolder);
+                playable.SetApplyFootIK(applyFootIK);
+                // Note: SetRemoveStartOffset is internal — not available in custom assemblies.
+                // The clip will play with its baked-in start offset in editor preview.
+                return playable;
+            }
+
+            return base.CreatePlayable(graph, owner);
+        }
+#endif
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {

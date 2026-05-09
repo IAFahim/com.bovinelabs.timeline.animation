@@ -8,6 +8,8 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
 {
     public struct TimelineAnimationStateBuilder
     {
+        private const float MinDuration = 0.001f;
+
         private Hash128 _fallbackClipHash;
         private float _blendInSpeed;
         private float _blendOutSpeed;
@@ -27,8 +29,8 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
             FallbackPlaybackMode mode = FallbackPlaybackMode.Loop)
         {
             _fallbackClipHash = clipHash;
-            _blendInSpeed = 1f / math.max(0.001f, blendInDuration);
-            _blendOutSpeed = 1f / math.max(0.001f, blendOutDuration);
+            _blendInSpeed = 1f / math.max(MinDuration, blendInDuration);
+            _blendOutSpeed = 1f / math.max(MinDuration, blendOutDuration);
             _playbackMode = mode;
             return this;
         }
@@ -96,6 +98,9 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
 
             builder.AddBuffer<BlendGroupEntry>();
             builder.AddBuffer<SmoothBlendGroupEntry>();
+            // Always added: any entity may be targeted by BlendTree2D tracks at runtime.
+            // InternalBufferCapacity(4) means minimal overhead for single-clip-only entities.
+            // The buffer is also used by the cleanup pass in DecomposeAndAppendBlendTreeJob.
             builder.AddBuffer<BlendTreePlaybackStateElement>();
         }
     }

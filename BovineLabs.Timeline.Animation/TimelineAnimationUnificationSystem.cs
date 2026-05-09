@@ -11,6 +11,11 @@ namespace BovineLabs.Timeline.Animation
     [UpdateBefore(typeof(AnimationProcessSystem))]
     public partial struct TimelineAnimationUnificationSystem : ISystem
     {
+        // Weight threshold below which a clip/entry is considered fully faded out.
+        private const float WeightEpsilon = 0.0001f;
+        // Minimum clip duration guard to avoid division by zero.
+        private const float MinDuration = 0.001f;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<BlobDatabaseSingleton>();
@@ -129,15 +134,15 @@ namespace BovineLabs.Timeline.Animation
                             s.CurrentWeight = math.max(s.TargetWeight, s.CurrentWeight - speed * DeltaTime);
                     }
 
-                    if (s.CurrentWeight <= 0.0001f && s.TargetWeight <= 0.0001f)
+                    if (s.CurrentWeight <= WeightEpsilon && s.TargetWeight <= WeightEpsilon)
                     {
                         smoothEntries.RemoveAtSwapBack(i);
                         continue;
                     }
 
-                    if (s.TargetWeight <= 0.0001f && AnimDB.TryGetValue(s.ClipHash, out var clipBlob) && clipBlob.IsCreated)
+                    if (s.TargetWeight <= WeightEpsilon && AnimDB.TryGetValue(s.ClipHash, out var clipBlob) && clipBlob.IsCreated)
                     {
-                        var duration = math.max(0.001f, clipBlob.Value.length);
+                        var duration = math.max(MinDuration, clipBlob.Value.length);
                         // Safe normalized time increment
                         s.NormalizedTime += (IsScrubbing ? 0 : DeltaTime) / duration; 
                         s.NormalizedTime = math.frac(s.NormalizedTime);
@@ -156,7 +161,7 @@ namespace BovineLabs.Timeline.Animation
                 }
 
                 var fallbackWeight = 1.0f - totalOverrideWeight;
-                if (fallbackWeight > 0.0001f && fallbackData.ClipHash != default)
+                if (fallbackWeight > WeightEpsilon && fallbackData.ClipHash != default)
                     if (AnimDB.TryGetValue(fallbackData.ClipHash, out var fallbackClip) && fallbackClip.IsCreated)
                     {
                         if (timer.PreviousFallbackClipHash != fallbackData.ClipHash)
@@ -165,7 +170,7 @@ namespace BovineLabs.Timeline.Animation
                             timer.PreviousFallbackClipHash = fallbackData.ClipHash;
                         }
 
-                        var duration = math.max(0.001f, fallbackClip.Value.length);
+                        var duration = math.max(MinDuration, fallbackClip.Value.length);
 
                         // Hold mode: stop accumulating once past clip end (don't wrap)
                         if (fallbackData.PlaybackMode == FallbackPlaybackMode.Hold)

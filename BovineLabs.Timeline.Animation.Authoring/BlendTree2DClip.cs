@@ -5,6 +5,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics.Authoring;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Animation.Authoring
@@ -23,6 +25,25 @@ namespace BovineLabs.Timeline.Animation.Authoring
         public bool applyFootIK = true;
 
         public ClipCaps clipCaps => ClipCaps.All;
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// In edit mode, return an empty AnimationMixerPlayable as a dummy node.
+        /// BlendTree2D clips are driven by ECS at runtime — there is no single clip
+        /// to preview for the editor PlayableGraph. The track mixer still provides
+        /// track-level offsets, but clip contents are DOTS-only.
+        /// </summary>
+        public override Playable CreatePlayable(PlayableGraph graph, GameObject owner)
+        {
+            if (!Application.isPlaying)
+            {
+                // Return an empty mixer — no animation data to preview per-clip for blend trees
+                return AnimationMixerPlayable.Create(graph, 0);
+            }
+
+            return base.CreatePlayable(graph, owner);
+        }
+#endif
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {

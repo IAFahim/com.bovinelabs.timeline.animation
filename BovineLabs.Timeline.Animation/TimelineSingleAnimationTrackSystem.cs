@@ -14,6 +14,8 @@ namespace BovineLabs.Timeline.Animation
 {[UpdateInGroup(typeof(TimelineComponentAnimationGroup))][UpdateBefore(typeof(TimelineAnimationUnificationSystem))]
     public partial struct TimelineSingleAnimationTrackSystem : ISystem
     {
+        private const float MinDuration = 0.001f;
+
         private NativeParallelMultiHashMap<Entity, BlendGroupEntry> activeAnimationsMap;
         private NativeList<Entity> uniqueKeys;
 
@@ -81,7 +83,7 @@ namespace BovineLabs.Timeline.Animation
                 if (!AnimDB.TryGetValue(clipData.ClipHash, out var clipBlob) || !clipBlob.IsCreated) return;
 
                 var timeInSeconds = (float)((double)localTime.Value * clipData.TimeScale + clipData.ClipIn);
-                var duration = math.max(0.001f, clipBlob.Value.length);
+                var duration = math.max(MinDuration, clipBlob.Value.length);
                 
                 float normalizedTime;
                 if (clipData.PostExtrapolation == TimelineClip.ClipExtrapolation.PingPong)

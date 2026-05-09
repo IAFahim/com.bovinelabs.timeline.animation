@@ -12,11 +12,29 @@ namespace BovineLabs.Timeline.Animation.Authoring
 {
     internal static class RukhankaAnimationTrackExtensions
     {
+        /// <summary>
+        /// Resolves a RigDefinitionAuthoring from the track binding.
+        /// Supports binding to either a RigDefinitionAuthoring directly, an Animator,
+        /// or a GameObject that contains either component.
+        /// </summary>
         public static RigDefinitionAuthoring ResolveRigDefinition(this PlayableDirector director, TrackAsset track)
         {
             var binding = director.GetGenericBinding(track);
-            return binding as RigDefinitionAuthoring
-                   ?? (binding as GameObject)?.GetComponent<RigDefinitionAuthoring>();
+
+            // Direct binding to RigDefinitionAuthoring
+            if (binding is RigDefinitionAuthoring rda)
+                return rda;
+
+            // Binding to Animator (TrackBindingType changed from RigDefinitionAuthoring to Animator
+            // for editor preview support) — look for RigDefinitionAuthoring on the same GameObject.
+            if (binding is Animator animator)
+                return animator.GetComponent<RigDefinitionAuthoring>();
+
+            // Fallback: binding could be a GameObject
+            if (binding is GameObject go)
+                return go.GetComponent<RigDefinitionAuthoring>();
+
+            return null;
         }
 
         public static bool TryComputeHash(this AnimationClip clip, Avatar avatar, out Hash128 hash)

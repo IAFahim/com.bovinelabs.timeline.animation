@@ -6,6 +6,8 @@ using Rukhanka;
 using Rukhanka.Hybrid;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using UnityEngine.Timeline;
 using Hash128 = Unity.Entities.Hash128;
 
@@ -13,7 +15,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
 {
     [Serializable]
     [TrackClipType(typeof(RukhankaAnimationClip))]
-    [TrackBindingType(typeof(RigDefinitionAuthoring))]
+    [TrackBindingType(typeof(Animator))]
     [DisplayName("BovineLabs/Animation/Rukhanka Clip")]
     public class RukhankaAnimationTrack : DOTSTrack
     {
@@ -30,6 +32,23 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
         [Header("Avatar Mask")] public AvatarMask avatarMask;
         public bool applyAvatarMask = true;
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// In edit mode, create a native AnimationMixerPlayable so Unity's Timeline
+        /// editor can scrub animations via the PlayableGraph.
+        /// Track offsets are not applied in preview (AnimationOffsetPlayable is internal).
+        /// </summary>
+        public override Playable CreateTrackMixer(PlayableGraph graph, GameObject go, int inputCount)
+        {
+            if (!Application.isPlaying)
+            {
+                return AnimationMixerPlayable.Create(graph, inputCount);
+            }
+
+            return base.CreateTrackMixer(graph, go, inputCount);
+        }
+#endif
 
         protected override void Bake(BakingContext context)
         {

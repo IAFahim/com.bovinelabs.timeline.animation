@@ -9,16 +9,21 @@ using Rukhanka.Hybrid;
 using Unity.Entities;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using UnityEngine.Timeline;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation.Authoring
 {
     [Serializable][TrackClipType(typeof(BlendTree2DClip))][TrackColor(0.20f, 0.70f, 0.85f)]
-    [TrackBindingType(typeof(RigDefinitionAuthoring))][DisplayName("BovineLabs/Animation/Blend Tree 2D")]
+    [TrackBindingType(typeof(Animator))][DisplayName("BovineLabs/Animation/Blend Tree 2D")]
     public class BlendTree2DTrack : DOTSTrack
-    {[Tooltip("Blend tree algorithm: SimpleDirectional for 1D-like with a center, FreeformCartesian for 2D positions, FreeformDirectional for 2D with polar handling.")]
-        public MotionBlob.Type BlendTreeType = MotionBlob.Type.BlendTree2DSimpleDirectional;[Tooltip("Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers.")]
+    {
+        [Tooltip("Blend tree algorithm: SimpleDirectional for 1D-like with a center, FreeformCartesian for 2D positions, FreeformDirectional for 2D with polar handling.")]
+        public MotionBlob.Type BlendTreeType = MotionBlob.Type.BlendTree2DSimpleDirectional;
+
+        [Tooltip("Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers.")]
         public int LayerIndex;
 
         [Header("Track Offsets")]
@@ -28,22 +33,45 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
         [Header("Avatar Mask")]
         public AvatarMask avatarMask;
-        public bool applyAvatarMask = true;[Header("Exit / Fallback Override (Optional)")][Tooltip("Animation clip to play as fallback when no timeline clips are active on this track's target. Overrides the default fallback set on TimelineAnimationStateAuthoring.")]
+        public bool applyAvatarMask = true;
+
+        [Header("Exit / Fallback Override (Optional)")][Tooltip("Animation clip to play as fallback when no timeline clips are active on this track's target. Overrides the default fallback set on TimelineAnimationStateAuthoring.")]
         public AnimationClip ExitIdleClip;
 
         [Tooltip("Time in seconds to blend into this fallback clip.")][Min(0.001f)]
-        public float BlendInDuration = 0.25f;[Tooltip("Time in seconds to blend out of this fallback clip.")] [Min(0.001f)]
+        public float BlendInDuration = 0.25f;
+
+        [Tooltip("Time in seconds to blend out of this fallback clip.")] [Min(0.001f)]
         public float BlendOutDuration = 0.25f;
 
         [Tooltip("How the fallback animation wraps.")]
-        public FallbackPlaybackMode FallbackPlaybackMode = FallbackPlaybackMode.Loop;[Tooltip("Motion entries that define the blend tree. Each entry maps an animation clip to a 2D direction/position.")]
+        public FallbackPlaybackMode FallbackPlaybackMode = FallbackPlaybackMode.Loop;
+
+        [Tooltip("Motion entries that define the blend tree. Each entry maps an animation clip to a 2D direction/position.")]
         public List<BlendTree2DMotionEntry> Motions = new();
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// In edit mode, create a native AnimationMixerPlayable so Unity's Timeline
+        /// editor can show track-level structure.
+        /// Individual BlendTree2D clips return empty playables — blend tree content
+        /// is DOTS-only and cannot be previewed via native Playables.
+        /// </summary>
+        public override Playable CreateTrackMixer(PlayableGraph graph, GameObject go, int inputCount)
+        {
+            if (!Application.isPlaying)
+            {
+                return AnimationMixerPlayable.Create(graph, inputCount);
+            }
+
+            return base.CreateTrackMixer(graph, go, inputCount);
+        }
+#endif
 
         protected override void Bake(BakingContext context)
         {
             var director = context.Director;
-            var binding = director.GetGenericBinding(this);
-            var rigDef = binding as RigDefinitionAuthoring ?? (binding as GameObject)?.GetComponent<RigDefinitionAuthoring>();
+            var rigDef = director.ResolveRigDefinition(this);
 
             if (rigDef == null)
             {
@@ -101,7 +129,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
                     PlaybackMode = FallbackPlaybackMode,
                     LayerIndex = LayerIndex,
                     BlendMode = AnimationBlendingMode.Override,
-                    AvatarMaskHash = avatarMaskHash, // Fallback uses track's mask
+                    AvatarMaskHash = avatarMaskHash,
                     PositionOffset = trackOffset == TrackOffset.ApplyTransformOffsets ? positionOffset : Vector3.zero,
                     RotationOffset = trackOffset == TrackOffset.ApplyTransformOffsets ? Quaternion.Euler(eulerAnglesOffset) : Quaternion.identity,
                     RemoveStartOffset = true,
@@ -121,13 +149,23 @@ namespace BovineLabs.Timeline.Animation.Authoring
             }
 
             base.Bake(context);
-        }[Serializable]
+        }
+
+        [Serializable]
         public class BlendTree2DMotionEntry
-        {[Tooltip("Animation clip for this motion entry.")]
-            public AnimationClip clip;[Tooltip("Direction angle in degrees. 0 = forward, 90 = right, -90 = left, 180 = backward.")][Range(-180, 180)]
-            public float degreeCalc;[Tooltip("Distance from origin in the blend space. Controls how far this motion extends.")]
-            public float rangeCalc = 1;[Tooltip("Computed direction vector (auto-calculated from degree and range).")] [InspectorReadOnly]
+        {
+            [Tooltip("Animation clip for this motion entry.")]
+            public AnimationClip clip;
+
+            [Tooltip("Direction angle in degrees. 0 = forward, 90 = right, -90 = left, 180 = backward.")][Range(-180, 180)]
+            public float degreeCalc;
+
+            [Tooltip("Distance from origin in the blend space. Controls how far this motion extends.")]
+            public float rangeCalc = 1;
+
+            [Tooltip("Computed direction vector (auto-calculated from degree and range).")] [InspectorReadOnly]
             public Vector2 directionCalc;
+
             internal Vector2 CalcDirection()
             {
                 var radians = degreeCalc * Mathf.Deg2Rad;
