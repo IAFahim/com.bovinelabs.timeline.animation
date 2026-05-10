@@ -8,24 +8,6 @@ namespace BovineLabs.Timeline.Animation.Editor
 {
     [WorldSystemFilter(WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-    [UpdateAfter(typeof(TimelineAnimationUnificationSystem))]
-    public partial class EditorRukhankaAnimationGroup : ComponentSystemGroup
-    {
-    }
-
-    [WorldSystemFilter(WorldSystemFilterFlags.Editor)]
-    [UpdateInGroup(typeof(EditorRukhankaAnimationGroup))]
-    [UpdateBefore(typeof(AnimationApplicationSystem))]
-    public partial struct EditorAnimationProcessWrapper : ISystem
-    {
-        public void OnUpdate(ref SystemState state)
-        {
-            state.Dependency.Complete();
-        }
-    }
-
-    [WorldSystemFilter(WorldSystemFilterFlags.Editor)]
-    [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateBefore(typeof(TimelineAnimationUnificationSystem))]
     public partial struct DisableAnimationCullingInEditorSystem : ISystem
     {
@@ -35,6 +17,20 @@ namespace BovineLabs.Timeline.Animation.Editor
             {
                 SystemAPI.SetComponentEnabled<CullAnimationsTag>(entity, false);
             }
+        }
+    }
+
+    [WorldSystemFilter(WorldSystemFilterFlags.Editor)]
+    [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [UpdateAfter(typeof(TimelineAnimationUnificationSystem))]
+    public partial class EditorRukhankaRunnerGroup : ComponentSystemGroup
+    {
+        protected override void OnCreate()
+        {
+            base.OnCreate();
+            EnableSystemSorting = false;
+            AddSystemToUpdateList(World.GetOrCreateSystem<AnimationProcessSystem>());
+            AddSystemToUpdateList(World.GetOrCreateSystem<AnimationApplicationSystem>());
         }
     }
 
@@ -49,34 +45,20 @@ namespace BovineLabs.Timeline.Animation.Editor
         {
             var timelineGroup = World.GetOrCreateSystemManaged<TimelineComponentAnimationGroup>();
 
-            // Timeline clip systems
-            SystemHandle[] timelineSystems =
+            SystemHandle[] systems =
             {
                 World.GetOrCreateSystem<DisableAnimationCullingInEditorSystem>(),
                 World.GetOrCreateSystem<TimelineAnimationBlendTree2DTrackSystem>(),
                 World.GetOrCreateSystem<TimelineSingleAnimationTrackSystem>(),
                 World.GetOrCreateSystem<TimelineAnimationUnificationSystem>(),
+                World.GetOrCreateSystem<EditorRukhankaRunnerGroup>()
             };
 
-            foreach (var sys in timelineSystems)
+            foreach (var sys in systems)
             {
                 timelineGroup.AddSystemToUpdateList(sys);
                 registeredSystems.Add(sys);
             }
-
-            // Rukhanka ECS bone pipeline in nested group with guaranteed ordering
-            var rukhankaGroup = World.GetOrCreateSystemManaged<EditorRukhankaAnimationGroup>();
-            timelineGroup.AddSystemToUpdateList((ComponentSystemBase)rukhankaGroup);
-            registeredSystems.Add(rukhankaGroup.SystemHandle);
-
-            var aps = World.GetOrCreateSystem<AnimationProcessSystem>();
-            var eaw = World.GetOrCreateSystem<EditorAnimationProcessWrapper>();
-            var aas = World.GetOrCreateSystem<AnimationApplicationSystem>();
-
-            rukhankaGroup.AddSystemToUpdateList(aps);
-            rukhankaGroup.AddSystemToUpdateList(eaw);
-            rukhankaGroup.AddSystemToUpdateList(aas);
-            rukhankaGroup.SortSystems();
 
             timelineGroup.SortSystems();
             Enabled = false;
@@ -102,7 +84,6 @@ namespace BovineLabs.Timeline.Animation.Editor
             registeredSystems.Clear();
         }
 
-        
         protected override void OnUpdate() { }
     }
 }
