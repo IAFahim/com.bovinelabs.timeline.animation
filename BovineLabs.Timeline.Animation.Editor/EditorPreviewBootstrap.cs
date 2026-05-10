@@ -20,6 +20,9 @@ namespace BovineLabs.Timeline.Animation.Editor
         }
     }
 
+    // -------------------------------------------------------------------------
+    // THE FIX: An explicitly ordered group that bypasses ECS attribute sorting.
+    // -------------------------------------------------------------------------
     [WorldSystemFilter(WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(TimelineAnimationUnificationSystem))]
@@ -28,8 +31,12 @@ namespace BovineLabs.Timeline.Animation.Editor
         protected override void OnCreate()
         {
             base.OnCreate();
-            EnableSystemSorting = false;
+
+            // Add systems in the EXACT order they must execute.
+            // 1. Process System computes/resizes the animation buffers.
             AddSystemToUpdateList(World.GetOrCreateSystem<AnimationProcessSystem>());
+            EnableSystemSorting = false;
+            // 2. Application System applies them to the Entity transforms.
             AddSystemToUpdateList(World.GetOrCreateSystem<AnimationApplicationSystem>());
         }
     }
@@ -51,6 +58,8 @@ namespace BovineLabs.Timeline.Animation.Editor
                 World.GetOrCreateSystem<TimelineAnimationBlendTree2DTrackSystem>(),
                 World.GetOrCreateSystem<TimelineSingleAnimationTrackSystem>(),
                 World.GetOrCreateSystem<TimelineAnimationUnificationSystem>(),
+                
+                // Add our custom rigid-ordered group instead of the manual barrier
                 World.GetOrCreateSystem<EditorRukhankaRunnerGroup>()
             };
 
@@ -58,6 +67,15 @@ namespace BovineLabs.Timeline.Animation.Editor
             {
                 timelineGroup.AddSystemToUpdateList(sys);
                 registeredSystems.Add(sys);
+            }
+
+            // CRITICAL: Ensure Rukhanka's Blob Database updates in the Editor World!
+            // Without this, baked animations triggered by the Timeline won't resolve.
+            var initGroup = World.GetExistingSystemManaged<InitializationSystemGroup>();
+            if (initGroup != null)
+            {
+                var blobDbSystem = World.GetOrCreateSystem<BlobDatabaseUpdateSystem>();
+                initGroup.AddSystemToUpdateList(blobDbSystem);
             }
 
             timelineGroup.SortSystems();
@@ -77,9 +95,7 @@ namespace BovineLabs.Timeline.Animation.Editor
                             timelineGroup.RemoveSystemFromUpdateList(sys);
                     }
                 }
-                catch
-                {
-                }
+                catch { /* World destruction in progress */ }
             }
             registeredSystems.Clear();
         }

@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.Playables;
 using UnityEditor;
+using Unity.Entities;
 
 namespace BovineLabs.Timeline.Animation.Editor
 {
@@ -19,6 +20,7 @@ namespace BovineLabs.Timeline.Animation.Editor
         private static void OnEditorUpdate()
         {
             if (Application.isPlaying) return;
+            if (EditorApplication.isCompiling) return;
 
             var director = s_Director;
             if (director == null)
@@ -36,6 +38,16 @@ namespace BovineLabs.Timeline.Animation.Editor
             s_LastTime = time;
 
             director.playableGraph.Evaluate();
+
+            // Force ECS Editor World to tick so timeline systems + Rukhanka bone pipeline run
+            foreach (var world in World.All)
+            {
+                if ((world.Flags & WorldFlags.Editor) == WorldFlags.Editor)
+                {
+                    world.Update();
+                    break;
+                }
+            }
         }
     }
 }
