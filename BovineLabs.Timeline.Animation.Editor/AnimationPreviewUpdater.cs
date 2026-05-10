@@ -1,18 +1,10 @@
 #if UNITY_EDITOR
 using UnityEngine;
-using UnityEngine.Animations;
 using UnityEngine.Playables;
 using UnityEditor;
-using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Animation.Editor
 {
-    /// <summary>
-    /// Hooks into AnimationMode to force-evaluate animation outputs created by
-    /// RukhankaAnimationTrack and BlendTree2DTrack during Timeline editor preview.
-    /// Timeline's own evaluation only processes outputs for built-in AnimationTrack.
-    /// Our custom AnimationPlayableOutputs on DOTSTrack-derived tracks need manual evaluation.
-    /// </summary>
     [InitializeOnLoad]
     internal static class AnimationPreviewUpdater
     {
@@ -28,20 +20,22 @@ namespace BovineLabs.Timeline.Animation.Editor
         {
             if (Application.isPlaying) return;
 
-            var director = Object.FindObjectOfType<PlayableDirector>();
-            if (director == null) return;
+            var director = s_Director;
+            if (director == null)
+            {
+                director = Object.FindAnyObjectByType<PlayableDirector>();
+                if (director == null) return;
+                s_Director = director;
+                s_LastTime = -1;
+            }
 
-            // Only act when the director time changes (Timeline scrubbing)
+            if (!director.playableGraph.IsValid()) return;
+
             var time = director.time;
             if (System.Math.Abs(time - s_LastTime) < 0.0001) return;
             s_LastTime = time;
 
-            if (!director.playableGraph.IsValid()) return;
-
-            var graph = director.playableGraph;
-
-            // Evaluate the full graph — this processes ALL outputs including our custom ones
-            graph.Evaluate();
+            director.playableGraph.Evaluate();
         }
     }
 }

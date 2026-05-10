@@ -63,15 +63,15 @@ namespace BovineLabs.Timeline.Animation.Authoring
             {
                 var mixer = AnimationMixerPlayable.Create(graph, inputCount);
 
-                // Create AnimationPlayableOutput targeting the bound Animator
+                // Resolve the Animator from the binding (may be RigDefinitionAuthoring on same GO)
                 var director = go.GetComponent<PlayableDirector>();
-                var binding = director != null ? director.GetGenericBinding(this) as Animator : null;
-                if (binding != null)
+                var rawBinding = director != null ? director.GetGenericBinding(this) : null;
+                var animator = rawBinding as Animator ?? (rawBinding as UnityEngine.Component)?.GetComponent<Animator>();
+                if (animator != null)
                 {
-                    // Prevent culling from freezing the Animator in T-pose during preview
-                    binding.cullingMode = 0; // AlwaysAnimate
+                    animator.cullingMode = 0; // AlwaysAnimate
 
-                    var output = AnimationPlayableOutput.Create(graph, name, binding);
+                    var output = AnimationPlayableOutput.Create(graph, name, animator);
                     output.SetSourcePlayable(mixer);
                     output.SetWeight(1.0f);
                 }
