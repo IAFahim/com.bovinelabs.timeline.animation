@@ -16,7 +16,7 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
         private BlobAssetReference<AnimationClipBlob> _fallbackBlob;
         private Hash128 _fallbackBlobHash;
         private FallbackPlaybackMode _playbackMode;
-        
+
         private float3 _positionOffset;
         private quaternion _rotationOffset;
         private bool _removeStartOffset;
@@ -35,7 +35,8 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
             return this;
         }
 
-        public TimelineAnimationStateBuilder WithFallbackOffsets(float3 pos, quaternion rot, bool removeStart, bool footIK)
+        public TimelineAnimationStateBuilder WithFallbackOffsets(float3 pos, quaternion rot, bool removeStart,
+            bool footIK)
         {
             _positionOffset = pos;
             _rotationOffset = rot;
@@ -93,7 +94,8 @@ namespace BovineLabs.Timeline.Animation.Data.Builders
             if (_fallbackBlob.IsCreated)
             {
                 var dbBuffer = builder.AddBuffer<NewBlobAssetDatabaseRecord<AnimationClipBlob>>();
-                dbBuffer.Add(new NewBlobAssetDatabaseRecord<AnimationClipBlob> { hash = _fallbackBlobHash, value = _fallbackBlob });
+                dbBuffer.Add(new NewBlobAssetDatabaseRecord<AnimationClipBlob>
+                    { hash = _fallbackBlobHash, value = _fallbackBlob });
             }
 
             builder.AddBuffer<BlendGroupEntry>();

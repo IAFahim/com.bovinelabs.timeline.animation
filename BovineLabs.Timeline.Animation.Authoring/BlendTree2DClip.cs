@@ -17,29 +17,29 @@ namespace BovineLabs.Timeline.Animation.Authoring
         public BlendDirectionReadKind ReadKind;
         public EntityLinkSchema ReadFrom;
 
-        [Header("Clip Transform Offsets")]
-        public Vector3 positionOffset = Vector3.zero;
+        [Header("Clip Transform Offsets")] public Vector3 positionOffset = Vector3.zero;
+
         public Vector3 eulerAnglesOffset = Vector3.zero;
-        [Space][Tooltip("Removes the starting offset of the animation so it begins exactly at the track's offset.")]
+
+        [Space] [Tooltip("Removes the starting offset of the animation so it begins exactly at the track's offset.")]
         public bool removeStartOffset = true;
+
         public bool applyFootIK = true;
 
         public ClipCaps clipCaps => ClipCaps.All;
 
 #if UNITY_EDITOR
         /// <summary>
-        /// In edit mode, return an empty AnimationMixerPlayable as a dummy node.
-        /// BlendTree2D clips are driven by ECS at runtime — there is no single clip
-        /// to preview for the editor PlayableGraph. The track mixer still provides
-        /// track-level offsets, but clip contents are DOTS-only.
+        ///     In edit mode, return an empty AnimationMixerPlayable as a dummy node.
+        ///     BlendTree2D clips are driven by ECS at runtime — there is no single clip
+        ///     to preview for the editor PlayableGraph. The track mixer still provides
+        ///     track-level offsets, but clip contents are DOTS-only.
         /// </summary>
         public override Playable CreatePlayable(PlayableGraph graph, GameObject owner)
         {
             if (!Application.isPlaying)
-            {
                 // Return an empty mixer — no animation data to preview per-clip for blend trees
-                return AnimationMixerPlayable.Create(graph, 0);
-            }
+                return AnimationMixerPlayable.Create(graph);
 
             return base.CreatePlayable(graph, owner);
         }
@@ -92,9 +92,11 @@ namespace BovineLabs.Timeline.Animation.Authoring
             entity = Entity.Null;
             if (!context.TryResolveLinkComponent<T>(ReadFrom, out var component))
             {
-                Debug.LogError($"{nameof(BlendTree2DClip)} '{name}' could not resolve '{ReadFrom.name}' with {typeof(T).Name}.");
+                Debug.LogError(
+                    $"{nameof(BlendTree2DClip)} '{name}' could not resolve '{ReadFrom.name}' with {typeof(T).Name}.");
                 return false;
             }
+
             entity = context.Baker.GetEntity(component, TransformUsageFlags.None);
             return entity != Entity.Null;
         }

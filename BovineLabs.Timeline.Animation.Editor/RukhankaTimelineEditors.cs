@@ -23,11 +23,11 @@ namespace BovineLabs.Timeline.Animation.Editor
         {
             var options = base.GetClipOptions(clip);
             var asset = clip.asset as RukhankaAnimationClip;
-            
+
             // Set the tooltip to the name of the assigned animation clip
             if (asset != null && asset.animationClipHolder != null)
                 options.tooltip = asset.animationClipHolder.name;
-                
+
             return options;
         }
     }

@@ -34,11 +34,9 @@ namespace BovineLabs.Timeline.Animation
             public void Execute(Entity entity, in FollowPositionOnly follow, ref LocalTransform lt)
             {
                 if (TargetL2WLookup.TryGetComponent(follow.TargetBone, out var targetL2W))
-                {
                     // Only update LocalTransform.Position; TransformSystemGroup derives LocalToWorld from it.
                     // Writing LocalToWorld directly would race with TransformSystemGroup.
                     lt.Position = targetL2W.Position;
-                }
             }
         }
     }

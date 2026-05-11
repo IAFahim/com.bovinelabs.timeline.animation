@@ -13,9 +13,9 @@ namespace BovineLabs.Timeline.Animation.Authoring
     internal static class RukhankaAnimationTrackExtensions
     {
         /// <summary>
-        /// Resolves a RigDefinitionAuthoring from the track binding.
-        /// Supports binding to either a RigDefinitionAuthoring directly, an Animator,
-        /// or a GameObject that contains either component.
+        ///     Resolves a RigDefinitionAuthoring from the track binding.
+        ///     Supports binding to either a RigDefinitionAuthoring directly, an Animator,
+        ///     or a GameObject that contains either component.
         /// </summary>
         public static RigDefinitionAuthoring ResolveRigDefinition(this PlayableDirector director, TrackAsset track)
         {

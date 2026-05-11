@@ -4,16 +4,17 @@ using UnityEngine;
 
 namespace BovineLabs.Timeline.Animation.Editor
 {
-    [CustomEditor(typeof(RukhankaAnimationClip)), CanEditMultipleObjects]
+    [CustomEditor(typeof(RukhankaAnimationClip))]
+    [CanEditMultipleObjects]
     public class RukhankaAnimationClipInspector : UnityEditor.Editor
     {
-        SerializedProperty m_AnimationClipHolder;
-        SerializedProperty m_PositionOffset;
-        SerializedProperty m_EulerAnglesOffset;
-        SerializedProperty m_RemoveStartOffset;
-        SerializedProperty m_ApplyFootIK;
+        private SerializedProperty m_AnimationClipHolder;
+        private SerializedProperty m_ApplyFootIK;
+        private SerializedProperty m_EulerAnglesOffset;
+        private SerializedProperty m_PositionOffset;
+        private SerializedProperty m_RemoveStartOffset;
 
-        void OnEnable()
+        private void OnEnable()
         {
             m_AnimationClipHolder = serializedObject.FindProperty("animationClipHolder");
             m_PositionOffset = serializedObject.FindProperty("positionOffset");

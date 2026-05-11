@@ -4,7 +4,8 @@ using Unity.Mathematics;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
-{[InternalBufferCapacity(0)]
+{
+    [InternalBufferCapacity(0)]
     public struct BlendGroupEntry : IBufferElementData
     {
         public int LayerIndex;
@@ -14,7 +15,7 @@ namespace BovineLabs.Timeline.Animation
         public Hash128 AvatarMaskHash;
         public AnimationBlendingMode BlendMode;
         public uint MotionId;
-        
+
         public float3 PositionOffset;
         public quaternion RotationOffset;
         public bool RemoveStartOffset;
@@ -32,7 +33,7 @@ namespace BovineLabs.Timeline.Animation
         public AnimationBlendingMode BlendMode;
         public Hash128 AvatarMaskHash;
         public uint MotionId;
-        
+
         public float3 PositionOffset;
         public quaternion RotationOffset;
         public bool RemoveStartOffset;
@@ -54,7 +55,7 @@ namespace BovineLabs.Timeline.Animation
         public int LayerIndex;
         public AnimationBlendingMode BlendMode;
         public Hash128 AvatarMaskHash;
-        
+
         // Added Parity Features
         public float3 PositionOffset;
         public quaternion RotationOffset;
@@ -71,7 +72,7 @@ namespace BovineLabs.Timeline.Animation
         public int LayerIndex;
         public AnimationBlendingMode BlendMode;
         public Hash128 AvatarMaskHash;
-        
+
         public float3 PositionOffset;
         public quaternion RotationOffset;
         public bool RemoveStartOffset;
@@ -87,13 +88,28 @@ namespace BovineLabs.Timeline.Animation
         public int LayerIndex;
         public AnimationBlendingMode BlendMode;
         public Hash128 AvatarMaskHash;
-        
+
         public float3 PositionOffset;
         public quaternion RotationOffset;
         public bool RemoveStartOffset;
         public bool ApplyFootIK;
     }
 
-    public enum FallbackPlaybackMode : byte { Loop = 0, Clamp = 1, Hold = 2 }
-    public struct AnimationDebugState : IComponentData { public int ActiveTrackCount; public int ActiveClipCount; public int FallbackTrackCount; public float FallbackWeight; public float BlendInSpeed; public float BlendOutSpeed; public FallbackPlaybackMode PlaybackMode; }
+    public enum FallbackPlaybackMode : byte
+    {
+        Loop = 0,
+        Clamp = 1,
+        Hold = 2
+    }
+
+    public struct AnimationDebugState : IComponentData
+    {
+        public int ActiveTrackCount;
+        public int ActiveClipCount;
+        public int FallbackTrackCount;
+        public float FallbackWeight;
+        public float BlendInSpeed;
+        public float BlendOutSpeed;
+        public FallbackPlaybackMode PlaybackMode;
+    }
 }

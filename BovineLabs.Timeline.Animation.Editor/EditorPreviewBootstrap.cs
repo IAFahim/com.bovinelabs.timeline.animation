@@ -1,8 +1,7 @@
 #if UNITY_EDITOR
-using Unity.Entities;
-using BovineLabs.Timeline;
-using Rukhanka;
 using System.Collections.Generic;
+using Rukhanka;
+using Unity.Entities;
 
 namespace BovineLabs.Timeline.Animation.Editor
 {
@@ -14,9 +13,7 @@ namespace BovineLabs.Timeline.Animation.Editor
         public void OnUpdate(ref SystemState state)
         {
             foreach (var (cull, entity) in SystemAPI.Query<RefRW<CullAnimationsTag>>().WithEntityAccess())
-            {
                 SystemAPI.SetComponentEnabled<CullAnimationsTag>(entity, false);
-            }
         }
     }
 
@@ -58,7 +55,7 @@ namespace BovineLabs.Timeline.Animation.Editor
                 World.GetOrCreateSystem<TimelineAnimationBlendTree2DTrackSystem>(),
                 World.GetOrCreateSystem<TimelineSingleAnimationTrackSystem>(),
                 World.GetOrCreateSystem<TimelineAnimationUnificationSystem>(),
-                
+
                 // Add our custom rigid-ordered group instead of the manual barrier
                 World.GetOrCreateSystem<EditorRukhankaRunnerGroup>()
             };
@@ -85,22 +82,24 @@ namespace BovineLabs.Timeline.Animation.Editor
         protected override void OnDestroy()
         {
             if (World.IsCreated && registeredSystems.Count > 0)
-            {
                 try
                 {
                     var timelineGroup = World.GetExistingSystemManaged<TimelineComponentAnimationGroup>();
                     if (timelineGroup != null)
-                    {
                         foreach (var sys in registeredSystems)
                             timelineGroup.RemoveSystemFromUpdateList(sys);
-                    }
                 }
-                catch { /* World destruction in progress */ }
-            }
+                catch
+                {
+                    /* World destruction in progress */
+                }
+
             registeredSystems.Clear();
         }
 
-        protected override void OnUpdate() { }
+        protected override void OnUpdate()
+        {
+        }
     }
 }
 #endif

@@ -7,7 +7,7 @@ namespace BovineLabs.Timeline.Animation
     public struct RukhankaSingleTrackData : IComponentData
     {
         public int LayerIndex;
-        
+
         public float3 TrackPositionOffset;
         public quaternion TrackRotationOffset;
         public bool ApplyAvatarMask;

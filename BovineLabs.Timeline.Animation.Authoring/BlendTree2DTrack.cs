@@ -1,44 +1,49 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using BovineLabs.Core.PropertyDrawers;
 using BovineLabs.Timeline.Authoring;
 using Rukhanka;
 using Rukhanka.Hybrid;
 using Unity.Entities;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
+using Component = UnityEngine.Component;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation.Authoring
 {
-    [Serializable][TrackClipType(typeof(BlendTree2DClip))][TrackColor(0.20f, 0.70f, 0.85f)]
-    [TrackBindingType(typeof(Animator))][DisplayName("BovineLabs/Animation/Blend Tree 2D")]
+    [Serializable]
+    [TrackClipType(typeof(BlendTree2DClip))]
+    [TrackColor(0.20f, 0.70f, 0.85f)]
+    [TrackBindingType(typeof(Animator))]
+    [DisplayName("BovineLabs/Animation/Blend Tree 2D")]
     public class BlendTree2DTrack : DOTSTrack
     {
-        [Tooltip("Blend tree algorithm: SimpleDirectional for 1D-like with a center, FreeformCartesian for 2D positions, FreeformDirectional for 2D with polar handling.")]
+        [Tooltip(
+            "Blend tree algorithm: SimpleDirectional for 1D-like with a center, FreeformCartesian for 2D positions, FreeformDirectional for 2D with polar handling.")]
         public MotionBlob.Type BlendTreeType = MotionBlob.Type.BlendTree2DSimpleDirectional;
 
         [Tooltip("Layer index for multi-track blending. 0 = base layer, 1+ = additive/override layers.")]
         public int LayerIndex;
 
-        [Header("Track Offsets")]
-        public TrackOffset trackOffset = TrackOffset.ApplyTransformOffsets;
+        [Header("Track Offsets")] public TrackOffset trackOffset = TrackOffset.ApplyTransformOffsets;
+
         public Vector3 positionOffset = Vector3.zero;
         public Vector3 eulerAnglesOffset = Vector3.zero;
 
-        [Header("Avatar Mask")]
-        public AvatarMask avatarMask;
+        [Header("Avatar Mask")] public AvatarMask avatarMask;
+
         public bool applyAvatarMask = true;
 
-        [Header("Exit / Fallback Override (Optional)")][Tooltip("Animation clip to play as fallback when no timeline clips are active on this track's target. Overrides the default fallback set on TimelineAnimationStateAuthoring.")]
+        [Header("Exit / Fallback Override (Optional)")]
+        [Tooltip(
+            "Animation clip to play as fallback when no timeline clips are active on this track's target. Overrides the default fallback set on TimelineAnimationStateAuthoring.")]
         public AnimationClip ExitIdleClip;
 
-        [Tooltip("Time in seconds to blend into this fallback clip.")][Min(0.001f)]
+        [Tooltip("Time in seconds to blend into this fallback clip.")] [Min(0.001f)]
         public float BlendInDuration = 0.25f;
 
         [Tooltip("Time in seconds to blend out of this fallback clip.")] [Min(0.001f)]
@@ -47,15 +52,16 @@ namespace BovineLabs.Timeline.Animation.Authoring
         [Tooltip("How the fallback animation wraps.")]
         public FallbackPlaybackMode FallbackPlaybackMode = FallbackPlaybackMode.Loop;
 
-        [Tooltip("Motion entries that define the blend tree. Each entry maps an animation clip to a 2D direction/position.")]
+        [Tooltip(
+            "Motion entries that define the blend tree. Each entry maps an animation clip to a 2D direction/position.")]
         public List<BlendTree2DMotionEntry> Motions = new();
 
 #if UNITY_EDITOR
         /// <summary>
-        /// In edit mode, create a native AnimationMixerPlayable and connect it
-        /// to an AnimationPlayableOutput targeting the bound Animator.
-        /// BlendTree2D clips return empty playables (DOTS-only content),
-        /// but the output is still needed so the track doesn't leave a dangling graph.
+        ///     In edit mode, create a native AnimationMixerPlayable and connect it
+        ///     to an AnimationPlayableOutput targeting the bound Animator.
+        ///     BlendTree2D clips return empty playables (DOTS-only content),
+        ///     but the output is still needed so the track doesn't leave a dangling graph.
         /// </summary>
         public override Playable CreateTrackMixer(PlayableGraph graph, GameObject go, int inputCount)
         {
@@ -66,7 +72,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 // Resolve the Animator from the binding (may be RigDefinitionAuthoring on same GO)
                 var director = go.GetComponent<PlayableDirector>();
                 var rawBinding = director != null ? director.GetGenericBinding(this) : null;
-                var animator = rawBinding as Animator ?? (rawBinding as UnityEngine.Component)?.GetComponent<Animator>();
+                var animator = rawBinding as Animator ?? (rawBinding as Component)?.GetComponent<Animator>();
                 if (animator != null)
                 {
                     animator.cullingMode = 0; // AlwaysAnimate
@@ -90,7 +96,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
             if (rigDef == null)
             {
-                Debug.LogWarning($"[BlendTree2DTrack] '{name}' has no RigDefinitionAuthoring binding — animation data will not be baked.");
+                Debug.LogWarning(
+                    $"[BlendTree2DTrack] '{name}' has no RigDefinitionAuthoring binding — animation data will not be baked.");
                 base.Bake(context);
                 return;
             }
@@ -105,15 +112,18 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 var maskBaker = new AvatarMaskBaker();
                 var maskBlob = maskBaker.CreateAvatarMaskBlob(baker, avatarMask, rigDef);
                 avatarMaskHash = maskBlob.Value.hash;
-                baker.AddBuffer<AvatarMaskBakingData>(trackEntity).Add(new AvatarMaskBakingData { rigEntity = trackEntity, dataBlob = maskBlob });
+                baker.AddBuffer<AvatarMaskBakingData>(trackEntity).Add(new AvatarMaskBakingData
+                    { rigEntity = trackEntity, dataBlob = maskBlob });
             }
 
-            baker.AddComponent(trackEntity, new BlendAnimationTree2DTrackData 
-            { 
-                BlendTreeType = BlendTreeType, 
+            baker.AddComponent(trackEntity, new BlendAnimationTree2DTrackData
+            {
+                BlendTreeType = BlendTreeType,
                 LayerIndex = LayerIndex,
                 TrackPositionOffset = trackOffset == TrackOffset.ApplyTransformOffsets ? positionOffset : Vector3.zero,
-                TrackRotationOffset = trackOffset == TrackOffset.ApplyTransformOffsets ? Quaternion.Euler(eulerAnglesOffset) : Quaternion.identity,
+                TrackRotationOffset = trackOffset == TrackOffset.ApplyTransformOffsets
+                    ? Quaternion.Euler(eulerAnglesOffset)
+                    : Quaternion.identity,
                 ApplyAvatarMask = applyAvatarMask,
                 AvatarMaskHash = avatarMaskHash
             });
@@ -129,7 +139,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 motionBuffer.Add(new BlendTree2DMotionData
                 {
                     AnimationHash = BakingUtils.ComputeAnimationHash(motion.clip, avatar),
-                    BlendTree2DMotionElement = new ScriptedAnimator.BlendTree2DMotionElement { pos = motion.directionCalc, motionIndex = index++ }
+                    BlendTree2DMotionElement = new ScriptedAnimator.BlendTree2DMotionElement
+                        { pos = motion.directionCalc, motionIndex = index++ }
                 });
                 clipsToBake.Add(motion.clip);
             }
@@ -146,7 +157,9 @@ namespace BovineLabs.Timeline.Animation.Authoring
                     BlendMode = AnimationBlendingMode.Override,
                     AvatarMaskHash = avatarMaskHash,
                     PositionOffset = trackOffset == TrackOffset.ApplyTransformOffsets ? positionOffset : Vector3.zero,
-                    RotationOffset = trackOffset == TrackOffset.ApplyTransformOffsets ? Quaternion.Euler(eulerAnglesOffset) : Quaternion.identity,
+                    RotationOffset = trackOffset == TrackOffset.ApplyTransformOffsets
+                        ? Quaternion.Euler(eulerAnglesOffset)
+                        : Quaternion.identity,
                     RemoveStartOffset = true,
                     ApplyFootIK = true
                 });
@@ -155,7 +168,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
             if (clipsToBake.Count > 0)
             {
-                var bakedAnimations = new AnimationClipBaker().BakeAnimations(baker, clipsToBake.ToArray(), avatar, rigDef.gameObject);
+                var bakedAnimations =
+                    new AnimationClipBaker().BakeAnimations(baker, clipsToBake.ToArray(), avatar, rigDef.gameObject);
                 var e = baker.CreateAdditionalEntity(TransformUsageFlags.None, false, name + "_BlendTreeAssets");
                 var dbBuffer = baker.AddBuffer<NewBlobAssetDatabaseRecord<AnimationClipBlob>>(e);
                 dbBuffer.AddValidAnimations(bakedAnimations);
@@ -172,7 +186,8 @@ namespace BovineLabs.Timeline.Animation.Authoring
             [Tooltip("Animation clip for this motion entry.")]
             public AnimationClip clip;
 
-            [Tooltip("Direction angle in degrees. 0 = forward, 90 = right, -90 = left, 180 = backward.")][Range(-180, 180)]
+            [Tooltip("Direction angle in degrees. 0 = forward, 90 = right, -90 = left, 180 = backward.")]
+            [Range(-180, 180)]
             public float degreeCalc;
 
             [Tooltip("Distance from origin in the blend space. Controls how far this motion extends.")]

@@ -11,6 +11,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Physics;
+using UnityEngine;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
@@ -20,24 +21,28 @@ namespace BovineLabs.Timeline.Animation
     public partial struct TimelineAnimationBlendTree2DTrackSystem : ISystem
     {
         /// <summary>
-        /// Accumulated per-clip data for a single timeline clip on a blend tree track.
-        /// Multiple clips may target the same track; their directions and weights are
-        /// combined in <see cref="PerTrackBlend"/> before the actual blend tree evaluation.
+        ///     Accumulated per-clip data for a single timeline clip on a blend tree track.
+        ///     Multiple clips may target the same track; their directions and weights are
+        ///     combined in <see cref="PerTrackBlend" /> before the actual blend tree evaluation.
         /// </summary>
         internal struct TrackClipData
         {
             public Entity Track;
             public float AbsoluteTime;
+
             /// <summary>Weighted direction contribution from this clip (pre-normalization).</summary>
             public float2 Direction;
+
             /// <summary>Clip weight from ClipWeight component or default 1.0.</summary>
             public float Weight;
         }
 
         // Weight threshold below which a clip/entry is considered fully faded out.
         private const float WeightEpsilon = 0.0001f;
+
         // Minimum clip duration guard to avoid division by zero.
         private const float MinDuration = 0.001f;
+
         // Small epsilon for direction normalization safety.
         private const float DirectionEpsilon = 0.0001f;
 
@@ -80,7 +85,7 @@ namespace BovineLabs.Timeline.Animation
 
             var isScrubbing = false;
 #if UNITY_EDITOR
-            isScrubbing = !UnityEngine.Application.isPlaying;
+            isScrubbing = !Application.isPlaying;
 #endif
 
             state.Dependency = new DecomposeAndAppendBlendTreeJob
@@ -274,8 +279,10 @@ namespace BovineLabs.Timeline.Animation
                     } while (ClipDataMap.TryGetNextValue(out clipData, ref it));
 
                 if (fallbackToMap)
+                {
                     ProcessTracksWithList(targetEntity, ref bestFallbackLayer, ref bestFallback,
                         ref hasFallbackCandidate);
+                }
                 else
                 {
                     for (var i = 0; i < processedTrackCount; i++)
@@ -469,9 +476,8 @@ namespace BovineLabs.Timeline.Animation
                     var found = AnimDB.TryGetValue(motionData.AnimationHash, out var cb);
 #if UNITY_EDITOR
                     if (!found)
-                    {
-                        UnityEngine.Debug.LogWarning("[BlendTree2D] Animation hash not found in BlobDatabaseSingleton. Motion entry will be skipped.");
-                    }
+                        Debug.LogWarning(
+                            "[BlendTree2D] Animation hash not found in BlobDatabaseSingleton. Motion entry will be skipped.");
 #endif
                     blendTreeClips[i] = found ? cb : BlobAssetReference<AnimationClipBlob>.Null;
                     blendTreePositions[i] = motionData.BlendTree2DMotionElement;
@@ -567,7 +573,7 @@ namespace BovineLabs.Timeline.Animation
                 var trackPosOffset = trackData.TrackPositionOffset;
                 var trackRotOffset = trackData.TrackRotationOffset;
                 var hasOffsets = math.lengthsq(trackPosOffset) > WeightEpsilon ||
-                                math.lengthsq(trackRotOffset.value.xyz) > WeightEpsilon;
+                                 math.lengthsq(trackRotOffset.value.xyz) > WeightEpsilon;
 
                 for (var i = 0; i < internalWeights.Length; i++)
                 {
@@ -609,8 +615,8 @@ namespace BovineLabs.Timeline.Animation
             }
 
             /// <summary>
-            /// Removes BlendTreePlaybackStateElement entries for tracks that are no longer active.
-            /// Stack-based version used when track count is within stackalloc capacity.
+            ///     Removes BlendTreePlaybackStateElement entries for tracks that are no longer active.
+            ///     Stack-based version used when track count is within stackalloc capacity.
             /// </summary>
             private unsafe void CleanupOrphanPlaybackStates(
                 Entity targetEntity,
@@ -624,13 +630,11 @@ namespace BovineLabs.Timeline.Animation
                     var track = stateBuffer[i].Track;
                     var found = false;
                     for (var j = 0; j < activeTrackCount; j++)
-                    {
                         if (activeTracks[j].TrackEntity == track)
                         {
                             found = true;
                             break;
                         }
-                    }
 
                     if (!found)
                         stateBuffer.RemoveAtSwapBack(i);
@@ -638,8 +642,8 @@ namespace BovineLabs.Timeline.Animation
             }
 
             /// <summary>
-            /// Removes BlendTreePlaybackStateElement entries for tracks that are no longer active.
-            /// Heap-based version used when track count exceeds stackalloc capacity.
+            ///     Removes BlendTreePlaybackStateElement entries for tracks that are no longer active.
+            ///     Heap-based version used when track count exceeds stackalloc capacity.
             /// </summary>
             private void CleanupOrphanPlaybackStatesHeap(
                 Entity targetEntity,
@@ -652,13 +656,11 @@ namespace BovineLabs.Timeline.Animation
                     var track = stateBuffer[i].Track;
                     var found = false;
                     for (var j = 0; j < activeTracks.Length; j++)
-                    {
                         if (activeTracks[j].TrackEntity == track)
                         {
                             found = true;
                             break;
                         }
-                    }
 
                     if (!found)
                         stateBuffer.RemoveAtSwapBack(i);
@@ -667,8 +669,8 @@ namespace BovineLabs.Timeline.Animation
         }
 
         /// <summary>
-        /// Resets FallbackBlend to DefaultBlendGroupFallback for entities not processed by
-        /// DecomposeAndAppendBlendTreeJob (i.e. entities with no active blend-tree clips).
+        ///     Resets FallbackBlend to DefaultBlendGroupFallback for entities not processed by
+        ///     DecomposeAndAppendBlendTreeJob (i.e. entities with no active blend-tree clips).
         /// </summary>
         [BurstCompile]
         private partial struct ResetStaleFallbackJob : IJobEntity
@@ -680,9 +682,8 @@ namespace BovineLabs.Timeline.Animation
             {
                 // Check if this entity was already processed by the main job
                 for (var i = 0; i < TargetEntities.Length; i++)
-                {
-                    if (TargetEntities[i] == entity) return; // Already handled
-                }
+                    if (TargetEntities[i] == entity)
+                        return; // Already handled
 
                 // Not processed — reset to default fallback
                 fallback = new FallbackBlend

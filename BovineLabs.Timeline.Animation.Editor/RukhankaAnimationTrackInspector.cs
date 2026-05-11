@@ -1,20 +1,22 @@
 using BovineLabs.Timeline.Animation.Authoring;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Animation.Editor
 {
-    [CustomEditor(typeof(RukhankaAnimationTrack)), CanEditMultipleObjects]
+    [CustomEditor(typeof(RukhankaAnimationTrack))]
+    [CanEditMultipleObjects]
     public class RukhankaAnimationTrackInspector : UnityEditor.Editor
     {
-        SerializedProperty m_LayerIndex;
-        SerializedProperty m_TrackOffset;
-        SerializedProperty m_PositionOffset;
-        SerializedProperty m_EulerAnglesOffset;
-        SerializedProperty m_AvatarMask;
-        SerializedProperty m_ApplyAvatarMask;
+        private SerializedProperty m_ApplyAvatarMask;
+        private SerializedProperty m_AvatarMask;
+        private SerializedProperty m_EulerAnglesOffset;
+        private SerializedProperty m_LayerIndex;
+        private SerializedProperty m_PositionOffset;
+        private SerializedProperty m_TrackOffset;
 
-        void OnEnable()
+        private void OnEnable()
         {
             m_LayerIndex = serializedObject.FindProperty("LayerIndex");
             m_TrackOffset = serializedObject.FindProperty("trackOffset");
@@ -33,9 +35,9 @@ namespace BovineLabs.Timeline.Animation.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Track Offsets", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(m_TrackOffset);
-            
+
             // Only draw offset fields if mode is Transform Offsets
-            if (m_TrackOffset.enumValueIndex == (int)UnityEngine.Timeline.TrackOffset.ApplyTransformOffsets)
+            if (m_TrackOffset.enumValueIndex == (int)TrackOffset.ApplyTransformOffsets)
             {
                 EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(m_PositionOffset, new GUIContent("Position"));

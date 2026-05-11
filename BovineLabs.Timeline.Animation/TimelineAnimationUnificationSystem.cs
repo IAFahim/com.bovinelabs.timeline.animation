@@ -3,6 +3,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
@@ -13,6 +14,7 @@ namespace BovineLabs.Timeline.Animation
     {
         // Weight threshold below which a clip/entry is considered fully faded out.
         private const float WeightEpsilon = 0.0001f;
+
         // Minimum clip duration guard to avoid division by zero.
         private const float MinDuration = 0.001f;
 
@@ -28,7 +30,7 @@ namespace BovineLabs.Timeline.Animation
 
             var isScrubbing = false;
 #if UNITY_EDITOR
-            isScrubbing = !UnityEngine.Application.isPlaying;
+            isScrubbing = !Application.isPlaying;
 #endif
 
             var job = new UnifyAnimationsJob
@@ -120,7 +122,9 @@ namespace BovineLabs.Timeline.Animation
                 for (var i = smoothEntries.Length - 1; i >= 0; i--)
                 {
                     var s = smoothEntries[i];
-                    var speed = s.CurrentWeight < s.TargetWeight ? fallbackData.BlendInSpeed : fallbackData.BlendOutSpeed;
+                    var speed = s.CurrentWeight < s.TargetWeight
+                        ? fallbackData.BlendInSpeed
+                        : fallbackData.BlendOutSpeed;
 
                     if (IsScrubbing)
                     {
@@ -140,11 +144,12 @@ namespace BovineLabs.Timeline.Animation
                         continue;
                     }
 
-                    if (s.TargetWeight <= WeightEpsilon && AnimDB.TryGetValue(s.ClipHash, out var clipBlob) && clipBlob.IsCreated)
+                    if (s.TargetWeight <= WeightEpsilon && AnimDB.TryGetValue(s.ClipHash, out var clipBlob) &&
+                        clipBlob.IsCreated)
                     {
                         var duration = math.max(MinDuration, clipBlob.Value.length);
                         // Safe normalized time increment
-                        s.NormalizedTime += (IsScrubbing ? 0 : DeltaTime) / duration; 
+                        s.NormalizedTime += (IsScrubbing ? 0 : DeltaTime) / duration;
                         s.NormalizedTime = math.frac(s.NormalizedTime);
                     }
 

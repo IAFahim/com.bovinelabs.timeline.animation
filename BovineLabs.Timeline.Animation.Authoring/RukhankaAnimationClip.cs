@@ -1,9 +1,7 @@
 using BovineLabs.Timeline.Authoring;
-using Rukhanka;
 using Rukhanka.Hybrid;
 using Unity.Entities;
 using UnityEngine;
-using UnityEngine.Animations;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
 
@@ -14,12 +12,13 @@ namespace BovineLabs.Timeline.Animation.Authoring
         [Tooltip("The animation clip to play when this timeline clip is active.")]
         public AnimationClip animationClipHolder;
 
-        [Header("Clip Transform Offsets")]
-        public Vector3 positionOffset = Vector3.zero;
+        [Header("Clip Transform Offsets")] public Vector3 positionOffset = Vector3.zero;
+
         public Vector3 eulerAnglesOffset = Vector3.zero;
-        
-        [Space][Tooltip("Removes the starting offset of the animation so it begins exactly at the track's offset.")]
+
+        [Space] [Tooltip("Removes the starting offset of the animation so it begins exactly at the track's offset.")]
         public bool removeStartOffset = true;
+
         public bool applyFootIK = true;
 
         public override double duration => animationClipHolder != null ? animationClipHolder.length : base.duration;
@@ -27,10 +26,10 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
 #if UNITY_EDITOR
         /// <summary>
-        /// In edit mode, return an AnimationPlayableAsset-driven playable so Unity's
-        /// PlayableGraph can scrub the animation in the Timeline editor window.
-        /// Uses Unity's built-in AnimationPlayableAsset which has access to internal
-        /// APIs (AnimationOffsetPlayable, SetRemoveStartOffset) via InternalsVisibleTo.
+        ///     In edit mode, return an AnimationPlayableAsset-driven playable so Unity's
+        ///     PlayableGraph can scrub the animation in the Timeline editor window.
+        ///     Uses Unity's built-in AnimationPlayableAsset which has access to internal
+        ///     APIs (AnimationOffsetPlayable, SetRemoveStartOffset) via InternalsVisibleTo.
         /// </summary>
         public override Playable CreatePlayable(PlayableGraph graph, GameObject owner)
         {
@@ -38,7 +37,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
             {
                 // Reuse Unity's built-in clip playable creation — it handles
                 // removeStartOffset, applyFootIK, and offset playables internally
-                var asset = ScriptableObject.CreateInstance<UnityEngine.Timeline.AnimationPlayableAsset>();
+                var asset = CreateInstance<AnimationPlayableAsset>();
                 asset.clip = animationClipHolder;
                 asset.applyFootIK = applyFootIK;
                 asset.removeStartOffset = removeStartOffset;
@@ -64,7 +63,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
                     TimeScale = (float)context.Clip.timeScale,
                     PreExtrapolation = context.Clip.preExtrapolationMode,
                     PostExtrapolation = context.Clip.postExtrapolationMode,
-                    
+
                     PositionOffset = positionOffset,
                     RotationOffset = Quaternion.Euler(eulerAnglesOffset),
                     RemoveStartOffset = removeStartOffset,

@@ -6,6 +6,4 @@ namespace BovineLabs.Timeline.Animation
     {
         public Entity TargetBone;
     }
-    
-
 }

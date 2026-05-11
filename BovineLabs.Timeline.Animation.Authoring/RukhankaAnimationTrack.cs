@@ -9,6 +9,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
+using Component = UnityEngine.Component;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation.Authoring
@@ -35,10 +36,10 @@ namespace BovineLabs.Timeline.Animation.Authoring
 
 #if UNITY_EDITOR
         /// <summary>
-        /// In edit mode, create a native AnimationMixerPlayable and connect it
-        /// to an AnimationPlayableOutput targeting the bound Animator.
-        /// DOTSTrack doesn't produce AnimationPlayableOutput automatically,
-        /// so we must create it manually for editor preview.
+        ///     In edit mode, create a native AnimationMixerPlayable and connect it
+        ///     to an AnimationPlayableOutput targeting the bound Animator.
+        ///     DOTSTrack doesn't produce AnimationPlayableOutput automatically,
+        ///     so we must create it manually for editor preview.
         /// </summary>
         public override Playable CreateTrackMixer(PlayableGraph graph, GameObject go, int inputCount)
         {
@@ -49,7 +50,7 @@ namespace BovineLabs.Timeline.Animation.Authoring
                 // Resolve the Animator from the binding (may be RigDefinitionAuthoring on same GO)
                 var director = go.GetComponent<PlayableDirector>();
                 var rawBinding = director != null ? director.GetGenericBinding(this) : null;
-                var animator = rawBinding as Animator ?? (rawBinding as UnityEngine.Component)?.GetComponent<Animator>();
+                var animator = rawBinding as Animator ?? (rawBinding as Component)?.GetComponent<Animator>();
                 if (animator != null)
                 {
                     animator.cullingMode = 0; // AlwaysAnimate

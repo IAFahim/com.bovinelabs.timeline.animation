@@ -1,8 +1,10 @@
 #if UNITY_EDITOR
+using System;
+using Unity.Entities;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Playables;
-using UnityEditor;
-using Unity.Entities;
+using Object = UnityEngine.Object;
 
 namespace BovineLabs.Timeline.Animation.Editor
 {
@@ -34,20 +36,18 @@ namespace BovineLabs.Timeline.Animation.Editor
             if (!director.playableGraph.IsValid()) return;
 
             var time = director.time;
-            if (System.Math.Abs(time - s_LastTime) < 0.0001) return;
+            if (Math.Abs(time - s_LastTime) < 0.0001) return;
             s_LastTime = time;
 
             director.playableGraph.Evaluate();
 
             // Force ECS Editor World to tick so timeline systems + Rukhanka bone pipeline run
             foreach (var world in World.All)
-            {
                 if ((world.Flags & WorldFlags.Editor) == WorldFlags.Editor)
                 {
                     world.Update();
                     break;
                 }
-            }
         }
     }
 }

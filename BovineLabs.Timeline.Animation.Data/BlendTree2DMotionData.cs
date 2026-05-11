@@ -6,7 +6,8 @@ using Unity.Properties;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
-{[InternalBufferCapacity(0)]
+{
+    [InternalBufferCapacity(0)]
     public struct BlendTree2DMotionData : IBufferElementData
     {
         public Hash128 AnimationHash;
@@ -18,10 +19,10 @@ namespace BovineLabs.Timeline.Animation
         public BlendDirectionReadKind ReadKind;
         public Entity ReadEntity;
         [CreateProperty] public float2 Value { get; set; }
-        
+
         public float ClipIn;
         public float TimeScale;
-        
+
         // Added Parity Features
         public float3 PositionOffset;
         public quaternion RotationOffset;
@@ -29,13 +30,18 @@ namespace BovineLabs.Timeline.Animation
         public bool ApplyFootIK;
     }
 
-    public enum BlendDirectionReadKind : byte { ClipValue = 0, PhysicsLinearVelocityNormalized = 1, PlayerMoveInput = 2 }
+    public enum BlendDirectionReadKind : byte
+    {
+        ClipValue = 0,
+        PhysicsLinearVelocityNormalized = 1,
+        PlayerMoveInput = 2
+    }
 
     public struct BlendAnimationTree2DTrackData : IComponentData
     {
         public MotionBlob.Type BlendTreeType;
         public int LayerIndex;
-        
+
         // Added Parity Features
         public float3 TrackPositionOffset;
         public quaternion TrackRotationOffset;

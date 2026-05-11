@@ -11,7 +11,9 @@ using UnityEngine.Timeline;
 using Hash128 = Unity.Entities.Hash128;
 
 namespace BovineLabs.Timeline.Animation
-{[UpdateInGroup(typeof(TimelineComponentAnimationGroup))][UpdateBefore(typeof(TimelineAnimationUnificationSystem))]
+{
+    [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [UpdateBefore(typeof(TimelineAnimationUnificationSystem))]
     public partial struct TimelineSingleAnimationTrackSystem : ISystem
     {
         private const float MinDuration = 0.001f;
@@ -32,7 +34,9 @@ namespace BovineLabs.Timeline.Animation
         {
             if (activeAnimationsMap.IsCreated) activeAnimationsMap.Dispose();
             if (uniqueKeys.IsCreated) uniqueKeys.Dispose();
-        }[BurstCompile]
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             activeAnimationsMap.Clear();
@@ -62,7 +66,8 @@ namespace BovineLabs.Timeline.Animation
             }.Schedule(uniqueKeys, 64, state.Dependency);
         }
 
-        [BurstCompile][WithAll(typeof(ClipActive), typeof(TimelineActive))]
+        [BurstCompile]
+        [WithAll(typeof(ClipActive), typeof(TimelineActive))]
         public partial struct GatherActiveClipsJob : IJobEntity
         {
             [ReadOnly] public NativeHashMap<Hash128, BlobAssetReference<AnimationClipBlob>> AnimDB;
@@ -71,7 +76,8 @@ namespace BovineLabs.Timeline.Animation
 
             public NativeParallelMultiHashMap<Entity, BlendGroupEntry>.ParallelWriter ActiveAnimations;
 
-            private void Execute(Entity clipEntity, in RukhankaSingleClipData clipData, in TrackBinding binding, in Clip clip, in LocalTime localTime)
+            private void Execute(Entity clipEntity, in RukhankaSingleClipData clipData, in TrackBinding binding,
+                in Clip clip, in LocalTime localTime)
             {
                 if (!TrackDataLookup.TryGetComponent(clip.Track, out var trackData)) return;
 
@@ -84,11 +90,11 @@ namespace BovineLabs.Timeline.Animation
 
                 var timeInSeconds = (float)((double)localTime.Value * clipData.TimeScale + clipData.ClipIn);
                 var duration = math.max(MinDuration, clipBlob.Value.length);
-                
+
                 float normalizedTime;
                 if (clipData.PostExtrapolation == TimelineClip.ClipExtrapolation.PingPong)
                 {
-                    float t = math.fmod(timeInSeconds, duration * 2f);
+                    var t = math.fmod(timeInSeconds, duration * 2f);
                     normalizedTime = (duration - math.abs(t - duration)) / duration;
                 }
                 else if (clipData.PostExtrapolation == TimelineClip.ClipExtrapolation.Loop || clipBlob.Value.looped)
@@ -101,8 +107,9 @@ namespace BovineLabs.Timeline.Animation
                 }
 
                 // Apply mathematical offset logic (Track Offset + Clip Offset)
-                float3 finalPosOffset = trackData.TrackPositionOffset + math.rotate(trackData.TrackRotationOffset, clipData.PositionOffset);
-                quaternion finalRotOffset = math.mul(trackData.TrackRotationOffset, clipData.RotationOffset);
+                var finalPosOffset = trackData.TrackPositionOffset +
+                                     math.rotate(trackData.TrackRotationOffset, clipData.PositionOffset);
+                var finalRotOffset = math.mul(trackData.TrackRotationOffset, clipData.RotationOffset);
 
                 ActiveAnimations.Add(binding.Value, new BlendGroupEntry
                 {
@@ -113,7 +120,7 @@ namespace BovineLabs.Timeline.Animation
                     AvatarMaskHash = trackData.ApplyAvatarMask ? trackData.AvatarMaskHash : default,
                     BlendMode = AnimationBlendingMode.Override,
                     MotionId = ComputeMotionId(clip.Track, trackData.LayerIndex, clipData.ClipHash),
-                    
+
                     PositionOffset = finalPosOffset,
                     RotationOffset = finalRotOffset,
                     RemoveStartOffset = clipData.RemoveStartOffset,
@@ -136,6 +143,7 @@ namespace BovineLabs.Timeline.Animation
         {
             [ReadOnly] public NativeParallelMultiHashMap<Entity, BlendGroupEntry> ActiveAnimations;
             public NativeList<Entity> UniqueKeys;
+
             public void Execute()
             {
                 var (keys, count) = ActiveAnimations.GetUniqueKeyArray(Allocator.Temp);
